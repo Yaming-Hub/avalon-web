@@ -1,0 +1,102 @@
+@inject GameService GameService
+
+<div class="card">
+    <h2>Lady of the Lake</h2>
+
+    @if (IsHolder)
+    {
+        @if (_investigationResult is not null)
+        {
+            <p>
+                <strong>@GetPlayerName(_selectedTargetId!)</strong> is
+                <span class="@(_investigationResult == "Good" ? "badge-good" : "badge-evil")">
+                    @_investigationResult
+                </span>!
+            </p>
+        }
+        else
+        {
+            <p>You hold the Lady of the Lake. Choose a player to investigate:</p>
+
+            <div class="player-select">
+                @foreach (var player in EligiblePlayers)
+                {
+                    <span class="player-chip @(player.Id == _selectedTargetId ? "selected" : "")"
+                          @onclick="() => _selectedTargetId = player.Id">
+                        @player.Name
+                    </span>
+                }
+            </div>
+
+            <button class="btn btn-primary btn-lg btn-block"
+                    @onclick="Investigate"
+                    disabled="@(string.IsNullOrEmpty(_selectedTargetId))">
+                Investigate
+            </button>
+        }
+    }
+    else
+    {
+        <div class="waiting">
+            <div class="spinner"></div>
+            <p>Waiting for @HolderName to investigate...</p>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <div class="error-text">@_error</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string GameId { get; set; } = default!;
+    [Parameter] public string PlayerId { get; set; } = default!;
+    [Parameter] public GameStateResponse State { get; set; } = default!;
+    [Parameter] public EventCallback OnAction { get; set; }
+
+    private string? _selectedTargetId;
+    private string? _investigationResult;
+    private string? _error;
+
+    private bool IsHolder => State.LadyOfTheLake?.CurrentHolderId == PlayerId;
+
+    private string HolderName =>
+        State.Players.FirstOrDefault(p => p.Id == State.LadyOfTheLake?.CurrentHolderId)?.Name ?? "the holder";
+
+    private IEnumerable<PlayerView> EligiblePlayers
+    {
+        get
+        {
+            var excludedIds = new HashSet<string> { PlayerId };
+            if (State.LadyOfTheLake?.History is not null)
+            {
+                foreach (var investigation in State.LadyOfTheLake.History)
+                {
+                    excludedIds.Add(investigation.InvestigatorId);
+                    excludedIds.Add(investigation.TargetId);
+                }
+            }
+            return State.Players.Where(p => !excludedIds.Contains(p.Id));
+        }
+    }
+
+    private string GetPlayerName(string playerId) =>
+        State.Players.FirstOrDefault(p => p.Id == playerId)?.Name ?? "Unknown";
+
+    private async Task Investigate()
+    {
+        _error = null;
+        if (string.IsNullOrEmpty(_selectedTargetId)) return;
+
+        try
+        {
+            _investigationResult = await GameService.InvestigateWithLadyAsync(GameId, PlayerId, _selectedTargetId);
+            await OnAction.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

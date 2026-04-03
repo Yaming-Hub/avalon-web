@@ -1,0 +1,82 @@
+@inject GameService GameService
+
+<div class="card">
+    <h2>Team Proposal — Round @_currentRound?.RoundNumber</h2>
+
+    @if (IsLeader)
+    {
+        <p>Select @_currentRound?.RequiredTeamSize players for the quest:</p>
+
+        <div class="player-select">
+            @foreach (var player in State.Players)
+            {
+                <span class="player-chip @(IsSelected(player.Id) ? "selected" : "")"
+                      @onclick="() => TogglePlayer(player.Id)">
+                    @player.Name
+                </span>
+            }
+        </div>
+
+        <p>Selected: @_selectedPlayerIds.Count / @_currentRound?.RequiredTeamSize</p>
+
+        <button class="btn btn-primary btn-lg btn-block"
+                @onclick="SubmitProposal"
+                disabled="@(_selectedPlayerIds.Count != _currentRound?.RequiredTeamSize)">
+            Submit Proposal
+        </button>
+    }
+    else
+    {
+        <div class="waiting">
+            <div class="spinner"></div>
+            <p>Waiting for @LeaderName to propose a team...</p>
+            <p>Team size needed: @_currentRound?.RequiredTeamSize</p>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <div class="error-text">@_error</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string GameId { get; set; } = default!;
+    [Parameter] public string PlayerId { get; set; } = default!;
+    [Parameter] public GameStateResponse State { get; set; } = default!;
+    [Parameter] public EventCallback OnAction { get; set; }
+
+    private readonly HashSet<string> _selectedPlayerIds = new();
+    private string? _error;
+
+    private RoundView? _currentRound => State.Rounds.LastOrDefault();
+    private bool IsLeader => State.CurrentLeader == PlayerId;
+    private string LeaderName => State.Players.FirstOrDefault(p => p.Id == State.CurrentLeader)?.Name ?? "the leader";
+
+    private bool IsSelected(string playerId) => _selectedPlayerIds.Contains(playerId);
+
+    private void TogglePlayer(string playerId)
+    {
+        if (!_selectedPlayerIds.Remove(playerId))
+        {
+            if (_currentRound is not null && _selectedPlayerIds.Count < _currentRound.RequiredTeamSize)
+            {
+                _selectedPlayerIds.Add(playerId);
+            }
+        }
+    }
+
+    private async Task SubmitProposal()
+    {
+        _error = null;
+        try
+        {
+            await GameService.ProposeTeamAsync(GameId, PlayerId, _selectedPlayerIds.ToList());
+            await OnAction.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

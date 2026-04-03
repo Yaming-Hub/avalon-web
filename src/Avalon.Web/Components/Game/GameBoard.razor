@@ -1,0 +1,104 @@
+@inject GameService GameService
+@inject GameEventBus EventBus
+@implements IDisposable
+
+@if (_state is null)
+{
+    <div class="game-layout">
+        <p><em>Loading game...</em></p>
+    </div>
+}
+else
+{
+    <div class="game-layout">
+        <div class="game-sidebar">
+            <RoleCard State="@_state" />
+            <PlayerList State="@_state" />
+            <QuestTrack State="@_state" />
+        </div>
+        <div class="game-main">
+            <PhaseBar State="@_state" />
+
+            @switch (_state.Phase)
+            {
+                case "Lobby":
+                    <LobbyPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                    break;
+
+                case "TeamProposal":
+                    <TeamProposalPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                    break;
+
+                case "TeamVote":
+                    <VotePanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                    break;
+
+                case "Quest":
+                    <QuestVotePanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                    break;
+
+                case "QuestResult":
+                    <QuestResultPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                    break;
+
+                case "AssassinVote":
+                    <AssassinPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                    break;
+
+                case "LadyOfTheLake":
+                    <LadyOfTheLakePanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                    break;
+
+                case "GameOver":
+                    <GameOverPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                    break;
+
+                default:
+                    <div class="card">
+                        <p>Phase: @_state.Phase</p>
+                    </div>
+                    break;
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string GameId { get; set; } = default!;
+    [Parameter] public string PlayerId { get; set; } = default!;
+
+    private GameStateResponse? _state;
+    private Action? _eventCallback;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _eventCallback = async () => await InvokeAsync(async () =>
+        {
+            await RefreshState();
+            StateHasChanged();
+        });
+        EventBus.Subscribe(GameId, _eventCallback);
+
+        await RefreshState();
+    }
+
+    private async Task RefreshState()
+    {
+        try
+        {
+            _state = await GameService.GetGameStateAsync(GameId, PlayerId);
+        }
+        catch
+        {
+            // Game may have been removed
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_eventCallback is not null)
+        {
+            EventBus.Unsubscribe(GameId, _eventCallback);
+        }
+    }
+}

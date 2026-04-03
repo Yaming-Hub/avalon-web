@@ -1,0 +1,59 @@
+@inject GameService GameService
+
+<div class="card">
+    <h2>Quest Result — Round @_currentRound?.RoundNumber</h2>
+
+    @if (_quest is not null)
+    {
+        @if (_currentRound?.IsSuccess == true)
+        {
+            <div class="game-result-banner result-good">
+                <h3>Quest Succeeded! ✓@_quest.SuccessCount ✗@_quest.FailCount</h3>
+            </div>
+        }
+        else
+        {
+            <div class="game-result-banner result-evil">
+                <h3>Quest Failed! ✓@_quest.SuccessCount ✗@_quest.FailCount</h3>
+            </div>
+        }
+    }
+
+    <p><strong>Quest Score — Good: @GoodWins | Evil: @EvilWins</strong></p>
+
+    <button class="btn btn-primary btn-lg btn-block" @onclick="Continue">Continue →</button>
+
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <div class="error-text">@_error</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string GameId { get; set; } = default!;
+    [Parameter] public string PlayerId { get; set; } = default!;
+    [Parameter] public GameStateResponse State { get; set; } = default!;
+    [Parameter] public EventCallback OnAction { get; set; }
+
+    private string? _error;
+
+    private RoundView? _currentRound => State.Rounds.LastOrDefault();
+    private QuestView? _quest => _currentRound?.Quest;
+
+    private int GoodWins => State.Rounds.Count(r => r.IsSuccess == true);
+    private int EvilWins => State.Rounds.Count(r => r.IsSuccess == false);
+
+    private async Task Continue()
+    {
+        _error = null;
+        try
+        {
+            await GameService.ProceedFromQuestResultAsync(GameId);
+            await OnAction.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

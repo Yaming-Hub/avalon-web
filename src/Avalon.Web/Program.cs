@@ -1,6 +1,7 @@
 using Avalon.Application.Interfaces;
 using Avalon.Application.Services;
 using Avalon.Infrastructure.Persistence;
+using Avalon.Web.Components;
 using Avalon.Web.Hubs;
 using Avalon.Web.Services;
 
@@ -11,6 +12,8 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSignalR();
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
 
 // CORS for future frontend
 builder.Services.AddCors(options =>
@@ -27,7 +30,8 @@ builder.Services.AddCors(options =>
 
 // DI registrations
 builder.Services.AddSingleton<IGameRepository, InMemoryGameRepository>();
-builder.Services.AddScoped<IGameNotifier, SignalRGameNotifier>();
+builder.Services.AddSingleton<GameEventBus>();
+builder.Services.AddScoped<IGameNotifier, BlazorGameNotifier>();
 builder.Services.AddScoped<GameStateMapper>();
 builder.Services.AddScoped<GameService>();
 
@@ -42,7 +46,10 @@ if (app.Environment.IsDevelopment())
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseCors();
+app.UseAntiforgery();
 app.MapControllers();
 app.MapHub<GameHub>("/hubs/game").RequireCors("SignalR");
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode();
 
 app.Run();

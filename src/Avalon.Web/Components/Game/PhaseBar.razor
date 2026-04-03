@@ -1,0 +1,34 @@
+@if (State is not null)
+{
+    <div class="phase-bar">
+        <span class="phase-badge">@FormatPhase(State.Phase)</span>
+
+        @if (State.CurrentLeader is not null)
+        {
+            var leader = State.Players.FirstOrDefault(p => p.Id == State.CurrentLeader);
+            <span class="phase-leader">
+                Leader: <strong>@(leader?.Name ?? "Unknown")</strong>
+            </span>
+        }
+
+        @if (State.ConsecutiveRejections > 0)
+        {
+            <span class="phase-rejections" title="Force-approve at 5 rejections">
+                Rejections: @State.ConsecutiveRejections / @GameConfiguration.MaxConsecutiveRejections
+            </span>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public GameStateResponse? State { get; set; }
+
+    private static string FormatPhase(string phase) => phase switch
+    {
+        "TeamProposal" => "Team Proposal",
+        "TeamVote" => "Team Vote",
+        "LadyOfTheLake" => "Lady of the Lake",
+        "GameOver" => "Game Over",
+        _ => phase
+    };
+}

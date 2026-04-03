@@ -1,0 +1,78 @@
+@inject GameService GameService
+
+<div class="card">
+    <h2>Vote on Team Proposal</h2>
+
+    @if (_currentProposal is not null)
+    {
+        <p><strong>Proposed by:</strong> @GetPlayerName(_currentProposal.LeaderPlayerId)</p>
+        <p><strong>Proposed team:</strong></p>
+        <div class="player-select">
+            @foreach (var id in _currentProposal.ProposedPlayerIds)
+            {
+                <span class="player-chip selected">@GetPlayerName(id)</span>
+            }
+        </div>
+
+        @if (State.ConsecutiveRejections > 0)
+        {
+            <p class="error-text">⚠ @State.ConsecutiveRejections/5 consecutive rejections</p>
+        }
+
+        @if (HasVoted)
+        {
+            <div class="waiting">
+                <div class="spinner"></div>
+                <p>Waiting for others to vote...</p>
+            </div>
+        }
+        else
+        {
+            <div class="btn-row">
+                <button class="btn btn-success btn-lg" @onclick="() => Vote(VoteType.Approve)">
+                    ✓ Approve
+                </button>
+                <button class="btn btn-danger btn-lg" @onclick="() => Vote(VoteType.Reject)">
+                    ✗ Reject
+                </button>
+            </div>
+        }
+    }
+
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <div class="error-text">@_error</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string GameId { get; set; } = default!;
+    [Parameter] public string PlayerId { get; set; } = default!;
+    [Parameter] public GameStateResponse State { get; set; } = default!;
+    [Parameter] public EventCallback OnAction { get; set; }
+
+    private string? _error;
+
+    private ProposalView? _currentProposal =>
+        State.Rounds.LastOrDefault()?.Proposals.LastOrDefault();
+
+    private bool HasVoted =>
+        _currentProposal?.Votes is not null && _currentProposal.Votes.ContainsKey(PlayerId);
+
+    private string GetPlayerName(string playerId) =>
+        State.Players.FirstOrDefault(p => p.Id == playerId)?.Name ?? "Unknown";
+
+    private async Task Vote(VoteType vote)
+    {
+        _error = null;
+        try
+        {
+            await GameService.VoteOnProposalAsync(GameId, PlayerId, vote);
+            await OnAction.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

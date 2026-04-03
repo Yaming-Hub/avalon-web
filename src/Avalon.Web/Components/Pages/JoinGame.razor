@@ -1,0 +1,108 @@
+@page "/game/{GameId}"
+
+@inject GameService GameService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@if (_joined)
+{
+    <GameBoard GameId="@GameId" PlayerId="@_playerId" />
+}
+else
+{
+    <div class="page-center">
+        <div class="card" style="text-align:center; background:linear-gradient(135deg, var(--card), var(--accent)); position:relative; overflow:hidden;">
+            <div style="position:absolute; inset:0; background:url('/images/bg_Dark_Forest_of_Avalon.png') center/cover no-repeat; opacity:0.12;"></div>
+            <div style="position:relative; z-index:1;">
+                <h1 style="font-size:1.5em; color:var(--gold); margin-bottom:4px;">Join Game</h1>
+                <p style="color:var(--muted);">Game Code: <span class="game-link" style="display:inline; padding:4px 10px;">@GameId</span></p>
+            </div>
+        </div>
+
+        <hr class="divider" />
+
+        @if (_loading)
+        {
+            <div class="waiting">
+                <span class="spinner"></span> Loading…
+            </div>
+        }
+        else
+        {
+            <div class="card">
+                <h2>Enter Your Name</h2>
+                <div class="form-group">
+                    <label>Player Name</label>
+                    <input type="text" @bind="_playerName" @bind:event="oninput" placeholder="Enter your name" />
+                </div>
+                <button class="btn btn-success btn-lg btn-block"
+                        @onclick="JoinGameAsync"
+                        disabled="@(_joining || string.IsNullOrWhiteSpace(_playerName))">
+                    @if (_joining)
+                    {
+                        <span class="spinner"></span> <span>Joining…</span>
+                    }
+                    else
+                    {
+                        <span>🛡️ Join Game</span>
+                    }
+                </button>
+                @if (_error is not null)
+                {
+                    <p class="error-text">@_error</p>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string GameId { get; set; } = default!;
+
+    private string? _playerId;
+    private string? _playerName;
+    private string? _error;
+    private bool _joined;
+    private bool _joining;
+    private bool _loading = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _playerId = await JS.InvokeAsync<string?>("sessionStorage.getItem", $"avalon_player_{GameId}");
+            if (_playerId is not null)
+            {
+                _joined = true;
+            }
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task JoinGameAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_playerName))
+            return;
+
+        _joining = true;
+        _error = null;
+
+        try
+        {
+            var response = await GameService.JoinGameAsync(GameId, _playerName.Trim());
+            _playerId = response.PlayerId;
+            await JS.InvokeVoidAsync("sessionStorage.setItem", $"avalon_player_{GameId}", _playerId);
+            _joined = true;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to join game: {ex.Message}";
+        }
+        finally
+        {
+            _joining = false;
+        }
+    }
+}

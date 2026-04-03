@@ -1,0 +1,69 @@
+<div class="card">
+    @switch (State.Result)
+    {
+        case "GoodWins":
+            <div class="game-result-banner result-good">
+                <h2>🎉 Good Prevails!</h2>
+            </div>
+            break;
+        case "EvilWinsByAssassination":
+            <div class="game-result-banner result-evil">
+                <h2>🗡 Merlin Assassinated!</h2>
+            </div>
+            break;
+        default:
+            <div class="game-result-banner result-evil">
+                <h2>💀 Evil Triumphs!</h2>
+            </div>
+            break;
+    }
+
+    @if (!string.IsNullOrEmpty(State.AssassinTarget))
+    {
+        <p><strong>Assassin targeted:</strong> @GetPlayerName(State.AssassinTarget)</p>
+    }
+
+    <h3>Role Reveal</h3>
+    <div class="reveal-grid">
+        @foreach (var player in State.Players)
+        {
+            <div class="reveal-card">
+                <img src="@GetCardImage(player.Role)" alt="@player.Role" />
+                <p><strong>@player.Name</strong></p>
+                <p>@player.Role</p>
+                <span class="@(player.Team == "Good" ? "badge-good" : "badge-evil")">
+                    @player.Team
+                </span>
+            </div>
+        }
+    </div>
+
+    <a class="btn btn-primary btn-lg btn-block" href="/">New Game</a>
+</div>
+
+@code {
+    [Parameter] public string GameId { get; set; } = default!;
+    [Parameter] public string PlayerId { get; set; } = default!;
+    [Parameter] public GameStateResponse State { get; set; } = default!;
+    [Parameter] public EventCallback OnAction { get; set; }
+
+    private string GetPlayerName(string playerId) =>
+        State.Players.FirstOrDefault(p => p.Id == playerId)?.Name ?? "Unknown";
+
+    private static string GetCardImage(string? role)
+    {
+        var fileName = role switch
+        {
+            "LoyalServant" => "card_Loyal_Servant.png",
+            "Merlin" => "card_Merlin.png",
+            "Percival" => "card_Percival.png",
+            "Assassin" => "card_Assassin.png",
+            "Morgana" => "card_Morgana.png",
+            "Mordred" => "card_Mordred.png",
+            "Oberon" => "card_Oberon.png",
+            "MinionOfMordred" => "card_Minion_of_Mordred.png",
+            _ => "card_Loyal_Servant.png"
+        };
+        return $"/images/{fileName}";
+    }
+}

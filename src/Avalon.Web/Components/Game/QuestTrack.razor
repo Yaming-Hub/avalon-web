@@ -1,0 +1,47 @@
+@if (State is not null)
+{
+    <div class="quest-track">
+        @for (int i = 1; i <= GameConfiguration.TotalQuests; i++)
+        {
+            var questNum = i;
+            var round = State.Rounds.FirstOrDefault(r => r.RoundNumber == questNum);
+            var isCurrent = round is not null && round.IsSuccess is null
+                            && State.Phase != "Lobby" && State.Phase != "GameOver";
+            var playerCount = State.Players.Count;
+            var teamSize = GetTeamSizeSafe(playerCount, questNum);
+            var failsRequired = GetFailsRequiredSafe(playerCount, questNum);
+
+            <div class="quest-marker @GetMarkerClass(round, isCurrent)">
+                <span class="quest-size">@teamSize</span>
+                @if (failsRequired > 1)
+                {
+                    <span class="quest-fails-indicator">@(failsRequired)F</span>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public GameStateResponse? State { get; set; }
+
+    private static string GetMarkerClass(RoundView? round, bool isCurrent)
+    {
+        if (isCurrent) return "current";
+        if (round?.IsSuccess == true) return "success";
+        if (round?.IsSuccess == false) return "fail";
+        return "pending";
+    }
+
+    private static int GetTeamSizeSafe(int playerCount, int questNumber)
+    {
+        if (!GameConfiguration.IsValidPlayerCount(playerCount)) return questNumber + 1;
+        return GameConfiguration.GetQuestTeamSize(playerCount, questNumber);
+    }
+
+    private static int GetFailsRequiredSafe(int playerCount, int questNumber)
+    {
+        if (!GameConfiguration.IsValidPlayerCount(playerCount)) return 1;
+        return GameConfiguration.GetFailsRequired(playerCount, questNumber);
+    }
+}

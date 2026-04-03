@@ -1,0 +1,137 @@
+@inject GameService GameService
+
+<div class="card">
+    <h2>Lobby</h2>
+    <p>Players: @State.Players.Count/10 (need at least 5)</p>
+
+    <ul>
+        @foreach (var player in State.Players)
+        {
+            <li>@player.Name @(player.IsHost ? "👑" : "")</li>
+        }
+    </ul>
+
+    @if (IsHost)
+    {
+        <h3>Game Settings</h3>
+        <div class="checkbox-group">
+            <label class="checkbox-label">
+                <input type="checkbox" checked disabled /> Merlin
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" checked disabled /> Assassin
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" @bind="_percivalEnabled" /> Percival
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" @bind="_morganaEnabled" /> Morgana
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" @bind="_mordredEnabled" /> Mordred
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" @bind="_oberonEnabled" /> Oberon
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" @bind="_ladyOfTheLakeEnabled" /> Lady of the Lake
+            </label>
+        </div>
+
+        <div class="btn-row">
+            <button class="btn btn-primary" @onclick="SaveSettings">Save Settings</button>
+            <button class="btn btn-success btn-lg" @onclick="StartGame" disabled="@(State.Players.Count < 5)">
+                Start Game
+            </button>
+        </div>
+
+        @if (State.Players.Count < 5)
+        {
+            <p class="error-text">Need at least 5 players to start.</p>
+        }
+    }
+    else
+    {
+        <div class="waiting">
+            <div class="spinner"></div>
+            <p>Waiting for host to start...</p>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <div class="error-text">@_error</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string GameId { get; set; } = default!;
+    [Parameter] public string PlayerId { get; set; } = default!;
+    [Parameter] public GameStateResponse State { get; set; } = default!;
+    [Parameter] public EventCallback OnAction { get; set; }
+
+    private bool _percivalEnabled;
+    private bool _morganaEnabled;
+    private bool _mordredEnabled;
+    private bool _oberonEnabled;
+    private bool _ladyOfTheLakeEnabled;
+    private string? _error;
+    private bool _initialized;
+
+    private bool IsHost => State.Players.FirstOrDefault(p => p.IsHost)?.Id == PlayerId;
+
+    protected override void OnParametersSet()
+    {
+        if (!_initialized && State.Settings is not null)
+        {
+            _percivalEnabled = State.Settings.PercivalEnabled;
+            _morganaEnabled = State.Settings.MorganaEnabled;
+            _mordredEnabled = State.Settings.MordredEnabled;
+            _oberonEnabled = State.Settings.OberonEnabled;
+            _ladyOfTheLakeEnabled = State.Settings.LadyOfTheLakeEnabled;
+            _initialized = true;
+        }
+    }
+
+    private async Task SaveSettings()
+    {
+        _error = null;
+        try
+        {
+            var request = new UpdateSettingsRequest(
+                MerlinEnabled: true,
+                AssassinEnabled: true,
+                PercivalEnabled: _percivalEnabled,
+                MorganaEnabled: _morganaEnabled,
+                MordredEnabled: _mordredEnabled,
+                OberonEnabled: _oberonEnabled,
+                LadyOfTheLakeEnabled: _ladyOfTheLakeEnabled);
+            await GameService.UpdateSettingsAsync(GameId, PlayerId, request);
+            await OnAction.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task StartGame()
+    {
+        _error = null;
+        if (State.Players.Count < 5)
+        {
+            _error = "Need at least 5 players to start.";
+            return;
+        }
+
+        try
+        {
+            await GameService.StartGameAsync(GameId, PlayerId);
+            await OnAction.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

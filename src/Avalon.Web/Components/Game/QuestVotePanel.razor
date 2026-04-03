@@ -1,0 +1,89 @@
+@inject GameService GameService
+
+<div class="card">
+    <h2>Quest — Round @_currentRound?.RoundNumber</h2>
+
+    @if (_quest is not null)
+    {
+        @if (IsParticipant)
+        {
+            @if (_hasVoted)
+            {
+                <div class="waiting">
+                    <div class="spinner"></div>
+                    <p>You have voted. Waiting for other quest members...</p>
+                </div>
+            }
+            else
+            {
+                <p><strong>You are on this quest!</strong></p>
+                <div class="btn-row">
+                    <button class="btn btn-success btn-lg" @onclick="() => Vote(QuestVote.Success)">
+                        ⚔ Success
+                    </button>
+                    <button class="btn btn-danger btn-lg"
+                            @onclick="() => Vote(QuestVote.Fail)"
+                            disabled="@(State.YourTeam == "Good")">
+                        💀 Fail
+                    </button>
+                </div>
+                @if (State.YourTeam == "Good")
+                {
+                    <p><em>As a loyal servant of Arthur, you must play Success.</em></p>
+                }
+            }
+        }
+        else
+        {
+            <div class="waiting">
+                <div class="spinner"></div>
+                <p>Waiting for quest members to vote...</p>
+            </div>
+
+            <p><strong>Quest members:</strong></p>
+            <div class="player-select">
+                @foreach (var id in _quest.ParticipantIds)
+                {
+                    <span class="player-chip selected">@GetPlayerName(id)</span>
+                }
+            </div>
+        }
+    }
+
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <div class="error-text">@_error</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string GameId { get; set; } = default!;
+    [Parameter] public string PlayerId { get; set; } = default!;
+    [Parameter] public GameStateResponse State { get; set; } = default!;
+    [Parameter] public EventCallback OnAction { get; set; }
+
+    private string? _error;
+    private bool _hasVoted;
+
+    private RoundView? _currentRound => State.Rounds.LastOrDefault();
+    private QuestView? _quest => _currentRound?.Quest;
+    private bool IsParticipant => _quest?.ParticipantIds.Contains(PlayerId) == true;
+
+    private string GetPlayerName(string playerId) =>
+        State.Players.FirstOrDefault(p => p.Id == playerId)?.Name ?? "Unknown";
+
+    private async Task Vote(QuestVote vote)
+    {
+        _error = null;
+        try
+        {
+            await GameService.VoteOnQuestAsync(GameId, PlayerId, vote);
+            _hasVoted = true;
+            await OnAction.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

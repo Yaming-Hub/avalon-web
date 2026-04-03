@@ -1,0 +1,70 @@
+@inject GameService GameService
+
+<div class="card">
+    <h2>Assassination</h2>
+
+    @if (IsAssassin)
+    {
+        <p><strong>Good has won the quests, but you can assassinate Merlin!</strong></p>
+        <p>Choose your target:</p>
+
+        <div class="player-select">
+            @foreach (var player in TargetablePlayers)
+            {
+                <span class="player-chip @(player.Id == _selectedTargetId ? "selected" : "")"
+                      @onclick="() => _selectedTargetId = player.Id">
+                    @player.Name
+                </span>
+            }
+        </div>
+
+        <button class="btn btn-danger btn-lg btn-block"
+                @onclick="Assassinate"
+                disabled="@(string.IsNullOrEmpty(_selectedTargetId))">
+            🗡 Assassinate
+        </button>
+    }
+    else
+    {
+        <div class="waiting">
+            <div class="spinner"></div>
+            <p>The Assassin is choosing their target...</p>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <div class="error-text">@_error</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string GameId { get; set; } = default!;
+    [Parameter] public string PlayerId { get; set; } = default!;
+    [Parameter] public GameStateResponse State { get; set; } = default!;
+    [Parameter] public EventCallback OnAction { get; set; }
+
+    private string? _selectedTargetId;
+    private string? _error;
+
+    private bool IsAssassin => State.YourRole == "Assassin";
+
+    private IEnumerable<PlayerView> TargetablePlayers =>
+        State.Players.Where(p => p.Id != PlayerId && (p.Team == "Good" || p.Team is null));
+
+    private async Task Assassinate()
+    {
+        _error = null;
+        if (string.IsNullOrEmpty(_selectedTargetId)) return;
+
+        try
+        {
+            await GameService.AssassinateAsync(GameId, PlayerId, _selectedTargetId);
+            await OnAction.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

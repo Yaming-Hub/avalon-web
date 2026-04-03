@@ -1,0 +1,98 @@
+@page "/"
+
+@inject GameService GameService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<div class="page-center">
+    @* Hero section *@
+    <div class="card" style="text-align:center; background: linear-gradient(135deg, var(--card), var(--accent)); position:relative; overflow:hidden;">
+        <div style="position:absolute; inset:0; background:url('/images/bg_Round_Table_of_Camelot.png') center/cover no-repeat; opacity:0.12;"></div>
+        <div style="position:relative; z-index:1;">
+            <h1 style="font-size:2em; color:var(--gold); margin-bottom:8px;">🏰 Avalon Online</h1>
+            <p style="color:var(--muted); font-size:1em;">Deception, deduction, and destiny await. Gather your allies and uncover the traitors.</p>
+        </div>
+    </div>
+
+    <hr class="divider" />
+
+    @* Create Game section *@
+    <div class="card">
+        <h2>Create a New Game</h2>
+        <div class="form-group">
+            <label>Your Name</label>
+            <input type="text" @bind="_hostName" @bind:event="oninput" placeholder="Enter your name" />
+        </div>
+        <button class="btn btn-primary btn-lg btn-block"
+                @onclick="CreateGame"
+                disabled="@(_creating || string.IsNullOrWhiteSpace(_hostName))">
+            @if (_creating)
+            {
+                <span class="spinner"></span> <span>Creating…</span>
+            }
+            else
+            {
+                <span>⚔️ Create Game</span>
+            }
+        </button>
+        @if (_error is not null)
+        {
+            <p class="error-text">@_error</p>
+        }
+    </div>
+
+    <hr class="divider" />
+
+    @* Join Game section *@
+    <div class="card">
+        <h2>Join an Existing Game</h2>
+        <div class="form-group">
+            <label>Game Code</label>
+            <input type="text" @bind="_joinGameId" @bind:event="oninput" placeholder="Enter game code" />
+        </div>
+        <button class="btn btn-success btn-lg btn-block"
+                @onclick="GoToGame"
+                disabled="@string.IsNullOrWhiteSpace(_joinGameId)">
+            🛡️ Join Game
+        </button>
+    </div>
+</div>
+
+@code {
+    private string? _hostName;
+    private string? _joinGameId;
+    private string? _error;
+    private bool _creating;
+
+    private async Task CreateGame()
+    {
+        if (string.IsNullOrWhiteSpace(_hostName))
+            return;
+
+        _creating = true;
+        _error = null;
+
+        try
+        {
+            var response = await GameService.CreateGameAsync(_hostName.Trim());
+            await JS.InvokeVoidAsync("sessionStorage.setItem", $"avalon_player_{response.GameId}", response.HostPlayerId);
+            Nav.NavigateTo($"/game/{response.GameId}");
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to create game: {ex.Message}";
+        }
+        finally
+        {
+            _creating = false;
+        }
+    }
+
+    private void GoToGame()
+    {
+        if (!string.IsNullOrWhiteSpace(_joinGameId))
+        {
+            Nav.NavigateTo($"/game/{_joinGameId.Trim()}");
+        }
+    }
+}
