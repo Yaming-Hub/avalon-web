@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Avalon.Application/Avalon.Application.csproj" />
+    <Project Path="src/Avalon.Domain/Avalon.Domain.csproj" />
+    <Project Path="src/Avalon.Infrastructure/Avalon.Infrastructure.csproj" />
+    <Project Path="src/Avalon.Web/Avalon.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Avalon.Application.Tests/Avalon.Application.Tests.csproj" />
+    <Project Path="tests/Avalon.Domain.Tests/Avalon.Domain.Tests.csproj" />
+    <Project Path="tests/Avalon.Web.Tests/Avalon.Web.Tests.csproj" />
+  </Folder>
+</Solution>
