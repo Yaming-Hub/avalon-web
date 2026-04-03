@@ -39,6 +39,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseCors();
 app.MapControllers();
 app.MapHub<GameHub>("/hubs/game").RequireCors("SignalR");

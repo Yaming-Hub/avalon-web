@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Avalon — Debug Console</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+<style>
+  :root { --bg: #1a1a2e; --surface: #16213e; --accent: #0f3460; --blue: #53a8f5; --green: #4ecca3; --red: #e84545; --gold: #f5a623; --text: #e0e0e0; --muted: #888; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  h1 { text-align: center; padding: 16px; color: var(--gold); font-size: 1.4em; }
+  h2 { font-size: 1em; color: var(--blue); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+  h3 { font-size: 0.9em; color: var(--gold); margin: 8px 0 4px; }
+
+  .layout { display: flex; height: calc(100vh - 56px); }
+  .sidebar { width: 320px; min-width: 280px; background: var(--surface); border-right: 1px solid #333; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+  .main-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .player-tabs { display: flex; background: var(--surface); border-bottom: 1px solid #333; overflow-x: auto; }
+  .player-tabs button { padding: 8px 16px; background: none; border: none; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; font-size: 0.85em; }
+  .player-tabs button.active { color: var(--blue); border-bottom-color: var(--blue); }
+  .player-tabs button:hover { color: var(--text); }
+  .player-view { flex: 1; overflow-y: auto; padding: 16px; }
+
+  .card { background: var(--accent); border-radius: 6px; padding: 12px; }
+  .card + .card { margin-top: 8px; }
+  .row { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+
+  input, select { background: #0a0a1a; border: 1px solid #444; color: var(--text); padding: 6px 10px; border-radius: 4px; font-size: 0.85em; width: 100%; }
+  input:focus, select:focus { outline: none; border-color: var(--blue); }
+
+  button { cursor: pointer; font-size: 0.85em; }
+  .btn { padding: 6px 14px; border: none; border-radius: 4px; font-weight: 600; transition: opacity 0.2s; }
+  .btn:hover { opacity: 0.85; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: var(--blue); color: #fff; }
+  .btn-success { background: var(--green); color: #000; }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-warn { background: var(--gold); color: #000; }
+  .btn-sm { padding: 4px 10px; font-size: 0.8em; }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.75em; font-weight: 600; }
+  .badge-good { background: #2d6a4f; color: #b7e4c7; }
+  .badge-evil { background: #6a2d2d; color: #e4b7b7; }
+  .badge-phase { background: #2d3a6a; color: #b7c4e4; }
+
+  .player-list { list-style: none; }
+  .player-list li { padding: 4px 0; font-size: 0.85em; display: flex; align-items: center; gap: 6px; }
+  .player-list .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot-good { background: var(--green); }
+  .dot-evil { background: var(--red); }
+  .dot-unknown { background: var(--muted); }
+
+  .log-panel { background: var(--surface); border-top: 1px solid #333; max-height: 200px; overflow-y: auto; }
+  .log-panel .log-header { padding: 6px 12px; font-size: 0.8em; color: var(--muted); display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+  .log-panel .log-body { padding: 0 12px 8px; font-family: 'Cascadia Code', monospace; font-size: 0.75em; }
+  .log-entry { padding: 2px 0; border-bottom: 1px solid #222; }
+  .log-entry .ts { color: var(--muted); }
+  .log-entry .evt { color: var(--gold); }
+  .log-entry .msg { color: var(--text); }
+
+  .team-select { display: flex; flex-wrap: wrap; gap: 4px; }
+  .team-select label { display: flex; align-items: center; gap: 4px; padding: 4px 8px; background: #0a0a1a; border: 1px solid #444; border-radius: 4px; font-size: 0.8em; cursor: pointer; }
+  .team-select label:has(input:checked) { border-color: var(--blue); background: var(--accent); }
+  .team-select input { display: none; }
+
+  .quest-track { display: flex; gap: 6px; margin: 8px 0; }
+  .quest-marker { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85em; border: 2px solid #444; }
+  .quest-marker.success { background: #2d6a4f; border-color: var(--green); }
+  .quest-marker.fail { background: #6a2d2d; border-color: var(--red); }
+  .quest-marker.current { border-color: var(--gold); box-shadow: 0 0 8px var(--gold); }
+  .quest-marker.pending { opacity: 0.5; }
+
+  .status-bar { padding: 6px 12px; background: var(--accent); font-size: 0.8em; display: flex; justify-content: space-between; align-items: center; }
+
+  .hidden { display: none !important; }
+  .copyable { cursor: pointer; text-decoration: underline dotted; }
+  .copyable:hover { color: var(--blue); }
+</style>
+</head>
+<body>
+
+<h1>🏰 Avalon — Debug Console</h1>
+
+<div class="layout">
+  <!-- Sidebar: Game Setup & Controls -->
+  <div class="sidebar">
+    <!-- Create / Join -->
+    <div class="card" id="setup-card">
+      <h2>Game Setup</h2>
+      <div class="row">
+        <input id="host-name" placeholder="Host name" value="Alice">
+        <button class="btn btn-primary" onclick="createGame()">Create Game</button>
+      </div>
+      <div id="join-section" class="hidden" style="margin-top:8px">
+        <div style="font-size:0.8em;color:var(--muted);margin-bottom:4px">
+          Game: <span id="game-id-display" class="copyable" onclick="copyGameId()" style="color:var(--gold)"></span>
+        </div>
+        <div class="row">
+          <input id="join-name" placeholder="Player name">
+          <button class="btn btn-primary" onclick="joinGame()">Join</button>
+        </div>
+        <div class="row" style="margin-top:4px">
+          <button class="btn btn-sm btn-primary" onclick="quickAdd()">+ Quick Add 4</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="card hidden" id="settings-card">
+      <h2>Settings</h2>
+      <div style="font-size:0.85em; display:flex; flex-direction:column; gap:4px;">
+        <label><input type="checkbox" id="set-merlin" checked disabled> Merlin</label>
+        <label><input type="checkbox" id="set-assassin" checked disabled> Assassin</label>
+        <label><input type="checkbox" id="set-percival"> Percival</label>
+        <label><input type="checkbox" id="set-morgana"> Morgana</label>
+        <label><input type="checkbox" id="set-mordred"> Mordred</label>
+        <label><input type="checkbox" id="set-oberon"> Oberon</label>
+        <label><input type="checkbox" id="set-lady"> Lady of the Lake</label>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn btn-warn btn-sm" onclick="updateSettings()">Save Settings</button>
+        <button class="btn btn-success" onclick="startGame()">▶ Start Game</button>
+      </div>
+    </div>
+
+    <!-- Players -->
+    <div class="card" id="players-card">
+      <h2>Players <span id="player-count" style="color:var(--muted);font-size:0.8em"></span></h2>
+      <ul class="player-list" id="player-list"></ul>
+    </div>
+
+    <!-- Quest Track -->
+    <div class="card hidden" id="quest-card">
+      <h2>Quest Track</h2>
+      <div class="quest-track" id="quest-track"></div>
+      <div id="round-info" style="font-size:0.8em;color:var(--muted);margin-top:4px"></div>
+    </div>
+
+    <!-- Game Status -->
+    <div class="card hidden" id="status-card">
+      <h2>Status</h2>
+      <div id="phase-display" style="margin-bottom:4px"></div>
+      <div id="leader-display" style="font-size:0.85em;color:var(--muted)"></div>
+      <div id="rejections-display" style="font-size:0.85em;color:var(--muted)"></div>
+      <div id="result-display" class="hidden" style="margin-top:8px;font-size:1.1em;font-weight:700"></div>
+    </div>
+  </div>
+
+  <!-- Main Area: Player Views + Actions -->
+  <div class="main-area">
+    <div class="player-tabs" id="player-tabs"></div>
+
+    <div class="player-view" id="player-view">
+      <div id="no-game" style="text-align:center;padding:40px;color:var(--muted)">
+        Create a game to get started.
+      </div>
+
+      <!-- Action panels (shown based on phase + active player) -->
+      <div id="action-area" class="hidden">
+        <!-- Role info -->
+        <div class="card" id="role-card">
+          <h3>Your Identity</h3>
+          <div id="role-info" style="font-size:0.9em;margin-top:4px"></div>
+          <div id="visible-info" style="font-size:0.85em;color:var(--muted);margin-top:4px"></div>
+        </div>
+
+        <!-- Propose team -->
+        <div class="card hidden" id="propose-card">
+          <h3>Propose Quest Team <span id="team-size-hint" style="color:var(--muted);font-size:0.85em"></span></h3>
+          <div class="team-select" id="team-select"></div>
+          <div class="row" style="margin-top:8px">
+            <button class="btn btn-primary" onclick="proposeTeam()">Submit Proposal</button>
+          </div>
+        </div>
+
+        <!-- Vote on proposal -->
+        <div class="card hidden" id="vote-card">
+          <h3>Vote on Team Proposal</h3>
+          <div id="proposal-info" style="font-size:0.85em;margin-bottom:8px"></div>
+          <div class="row">
+            <button class="btn btn-success" onclick="vote('Approve')">✓ Approve</button>
+            <button class="btn btn-danger" onclick="vote('Reject')">✗ Reject</button>
+          </div>
+        </div>
+
+        <!-- Quest vote -->
+        <div class="card hidden" id="quest-vote-card">
+          <h3>Quest Vote</h3>
+          <p style="font-size:0.85em;margin-bottom:8px">You are on this quest. Choose wisely.</p>
+          <div class="row">
+            <button class="btn btn-success" onclick="questVote('Success')">⚔ Success</button>
+            <button class="btn btn-danger" id="fail-btn" onclick="questVote('Fail')">💀 Fail</button>
+          </div>
+        </div>
+
+        <!-- Quest result / proceed -->
+        <div class="card hidden" id="result-action-card">
+          <h3>Quest Complete</h3>
+          <div id="quest-result-info" style="font-size:0.9em;margin-bottom:8px"></div>
+          <button class="btn btn-primary" onclick="proceed()">Continue →</button>
+        </div>
+
+        <!-- Lady of the Lake -->
+        <div class="card hidden" id="lady-card">
+          <h3>🏺 Lady of the Lake</h3>
+          <p style="font-size:0.85em;margin-bottom:8px">Choose a player to investigate:</p>
+          <select id="lady-target"></select>
+          <div class="row" style="margin-top:6px">
+            <button class="btn btn-warn" onclick="ladyInvestigate()">Investigate</button>
+          </div>
+          <div id="lady-result" class="hidden" style="margin-top:8px;font-weight:700"></div>
+        </div>
+
+        <!-- Assassin -->
+        <div class="card hidden" id="assassin-card">
+          <h3>🗡 Assassination</h3>
+          <p style="font-size:0.85em;margin-bottom:8px">Evil has lost the quests, but the Assassin can still win by identifying Merlin!</p>
+          <select id="assassin-target"></select>
+          <div class="row" style="margin-top:6px">
+            <button class="btn btn-danger" onclick="assassinate()">Assassinate</button>
+          </div>
+        </div>
+
+        <!-- Game Over reveal -->
+        <div class="card hidden" id="gameover-card">
+          <h3>Game Over — All Roles Revealed</h3>
+          <ul class="player-list" id="reveal-list"></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Log Panel -->
+    <div class="log-panel">
+      <div class="log-header" onclick="toggleLog()">
+        <span>📋 Event Log</span>
+        <span id="log-toggle">▼</span>
+      </div>
+      <div class="log-body" id="log-body"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '/api/games';
+let gameId = null;
+let players = []; // { id, name, token }
+let activePlayerIdx = 0;
+let gameState = null;
+let signalR = null;
+let logExpanded = true;
+
+// --- API helpers ---
+async function api(method, path, body, playerId) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (playerId) opts.headers['X-Player-Id'] = playerId;
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(path, opts);
+  const text = await res.text();
+  let data = null;
+  try { data = JSON.parse(text); } catch { data = text; }
+  log(`${method} ${path}`, res.ok ? '✓' : `✗ ${res.status}`, typeof data === 'string' ? data : JSON.stringify(data).substring(0, 200));
+  if (!res.ok) throw new Error(typeof data === 'object' ? JSON.stringify(data) : data);
+  return data;
+}
+
+// --- Game actions ---
+async function createGame() {
+  const name = document.getElementById('host-name').value.trim();
+  if (!name) return;
+  const res = await api('POST', `${API}?hostName=${encodeURIComponent(name)}`, {});
+  gameId = res.gameId;
+  players = [{ id: res.hostPlayerId, name, token: res.hostPlayerToken }];
+  document.getElementById('game-id-display').textContent = gameId;
+  document.getElementById('join-section').classList.remove('hidden');
+  document.getElementById('settings-card').classList.remove('hidden');
+  document.getElementById('no-game').classList.add('hidden');
+  document.getElementById('action-area').classList.remove('hidden');
+  connectSignalR();
+  refreshState();
+}
+
+async function joinGame() {
+  const name = document.getElementById('join-name').value.trim();
+  if (!name || !gameId) return;
+  const res = await api('POST', `${API}/${gameId}/join`, { playerName: name });
+  players.push({ id: res.playerId, name, token: res.playerId });
+  document.getElementById('join-name').value = '';
+  refreshState();
+}
+
+async function quickAdd() {
+  const names = ['Bob', 'Carol', 'Dave', 'Eve', 'Frank', 'Grace', 'Heidi', 'Ivan'];
+  const need = Math.min(4, 10 - players.length);
+  for (let i = 0; i < need; i++) {
+    const name = names.find(n => !players.some(p => p.name === n)) || `P${players.length}`;
+    await joinGame_internal(name);
+  }
+  refreshState();
+}
+
+async function joinGame_internal(name) {
+  const res = await api('POST', `${API}/${gameId}/join`, { playerName: name });
+  players.push({ id: res.playerId, name, token: res.playerId });
+}
+
+async function updateSettings() {
+  if (!gameId) return;
+  const host = players[0];
+  await api('POST', `${API}/${gameId}/settings`, {
+    merlinEnabled: document.getElementById('set-merlin').checked,
+    assassinEnabled: document.getElementById('set-assassin').checked,
+    percivalEnabled: document.getElementById('set-percival').checked,
+    morganaEnabled: document.getElementById('set-morgana').checked,
+    mordredEnabled: document.getElementById('set-mordred').checked,
+    oberonEnabled: document.getElementById('set-oberon').checked,
+    ladyOfTheLakeEnabled: document.getElementById('set-lady').checked,
+  }, host.id);
+  refreshState();
+}
+
+async function startGame() {
+  if (!gameId) return;
+  await updateSettings();
+  await api('POST', `${API}/${gameId}/start`, null, players[0].id);
+  refreshState();
+}
+
+async function proposeTeam() {
+  const ap = activePlayer();
+  const checked = [...document.querySelectorAll('#team-select input:checked')].map(el => el.value);
+  await api('POST', `${API}/${gameId}/propose`, { playerIds: checked }, ap.id);
+  refreshState();
+}
+
+async function vote(v) {
+  const ap = activePlayer();
+  await api('POST', `${API}/${gameId}/vote`, { vote: v }, ap.id);
+  refreshState();
+}
+
+async function questVote(v) {
+  const ap = activePlayer();
+  await api('POST', `${API}/${gameId}/quest-vote`, { vote: v }, ap.id);
+  refreshState();
+}
+
+async function proceed() {
+  await api('POST', `${API}/${gameId}/proceed`);
+  refreshState();
+}
+
+async function ladyInvestigate() {
+  const ap = activePlayer();
+  const targetId = document.getElementById('lady-target').value;
+  const res = await api('POST', `${API}/${gameId}/lady-investigate`, { targetPlayerId: targetId }, ap.id);
+  document.getElementById('lady-result').textContent = `Result: ${res.alignment}`;
+  document.getElementById('lady-result').classList.remove('hidden');
+  refreshState();
+}
+
+async function assassinate() {
+  const ap = activePlayer();
+  const targetId = document.getElementById('assassin-target').value;
+  await api('POST', `${API}/${gameId}/assassinate`, { targetPlayerId: targetId }, ap.id);
+  refreshState();
+}
+
+// --- SignalR ---
+async function connectSignalR() {
+  if (signalR) return;
+  signalR = new signalR.HubConnectionBuilder().withUrl('/hubs/game').build();
+  signalR.on('PlayerJoined', name => { logEvent('PlayerJoined', name); refreshState(); });
+  signalR.on('PlayerLeft', name => { logEvent('PlayerLeft', name); refreshState(); });
+  signalR.on('GameStarted', () => { logEvent('GameStarted', ''); refreshState(); });
+  signalR.on('PhaseChanged', phase => { logEvent('PhaseChanged', phase); refreshState(); });
+  signalR.on('TeamProposed', (leader, team) => { logEvent('TeamProposed', `${leader}: ${team.join(', ')}`); refreshState(); });
+  signalR.on('VoteRevealed', votes => { logEvent('VoteRevealed', JSON.stringify(votes)); refreshState(); });
+  signalR.on('QuestResult', (s, f) => { logEvent('QuestResult', `${s} success, ${f} fail`); refreshState(); });
+  signalR.on('GameOver', result => { logEvent('GameOver', result); refreshState(); });
+  signalR.on('LadyResult', alignment => { logEvent('LadyResult', alignment); });
+  try {
+    await signalR.start();
+    await signalR.invoke('JoinGame', gameId);
+    logEvent('SignalR', 'Connected');
+  } catch (e) {
+    logEvent('SignalR', `Failed: ${e.message}`);
+    signalR = null;
+  }
+}
+
+// --- State refresh ---
+async function refreshState() {
+  if (!gameId) return;
+  const ap = activePlayer();
+  try {
+    gameState = await api('GET', `${API}/${gameId}`, null, ap?.id);
+  } catch { return; }
+  renderAll();
+}
+
+function activePlayer() { return players[activePlayerIdx]; }
+
+// --- Rendering ---
+function renderAll() {
+  if (!gameState) return;
+  renderPlayerTabs();
+  renderPlayerList();
+  renderQuestTrack();
+  renderStatus();
+  renderActionArea();
+}
+
+function renderPlayerTabs() {
+  const tabs = document.getElementById('player-tabs');
+  tabs.innerHTML = '';
+  players.forEach((p, i) => {
+    const btn = document.createElement('button');
+    btn.textContent = p.name;
+    if (i === activePlayerIdx) btn.classList.add('active');
+    btn.onclick = () => { activePlayerIdx = i; refreshState(); };
+
+    // Show role indicator if game started
+    if (gameState && gameState.phase !== 'Lobby') {
+      // We need per-player state to show role — fetch async or use cached
+    }
+    tabs.appendChild(btn);
+  });
+}
+
+function renderPlayerList() {
+  const ul = document.getElementById('player-list');
+  ul.innerHTML = '';
+  const count = document.getElementById('player-count');
+  count.textContent = `(${gameState.players.length})`;
+
+  gameState.players.forEach(p => {
+    const li = document.createElement('li');
+    const dot = document.createElement('span');
+    dot.className = 'dot ' + (p.team === 'Good' ? 'dot-good' : p.team === 'Evil' ? 'dot-evil' : 'dot-unknown');
+    li.appendChild(dot);
+
+    const local = players.find(lp => lp.id === p.id);
+    let text = p.name + (p.isHost ? ' 👑' : '');
+    if (p.role) text += ` [${p.role}]`;
+    if (gameState.currentLeader === p.id) text += ' 🎯';
+    li.appendChild(document.createTextNode(text));
+    ul.appendChild(li);
+  });
+}
+
+function renderQuestTrack() {
+  const card = document.getElementById('quest-card');
+  const track = document.getElementById('quest-track');
+  const info = document.getElementById('round-info');
+  if (gameState.phase === 'Lobby') { card.classList.add('hidden'); return; }
+  card.classList.remove('hidden');
+  track.innerHTML = '';
+
+  for (let i = 0; i < 5; i++) {
+    const marker = document.createElement('div');
+    marker.className = 'quest-marker';
+    const round = gameState.rounds[i];
+    if (round) {
+      if (round.isSuccess === true) marker.classList.add('success');
+      else if (round.isSuccess === false) marker.classList.add('fail');
+      else marker.classList.add('current');
+      marker.textContent = round.requiredTeamSize;
+    } else {
+      marker.classList.add('pending');
+      marker.textContent = i + 1;
+    }
+    track.appendChild(marker);
+  }
+
+  const cr = gameState.rounds[gameState.rounds.length - 1];
+  if (cr && cr.isSuccess === null) {
+    info.textContent = `Round ${cr.roundNumber}: Need ${cr.requiredTeamSize} players, ${cr.failsRequired} fail(s) to fail`;
+  } else {
+    info.textContent = '';
+  }
+}
+
+function renderStatus() {
+  const card = document.getElementById('status-card');
+  if (gameState.phase === 'Lobby') { card.classList.add('hidden'); return; }
+  card.classList.remove('hidden');
+
+  document.getElementById('phase-display').innerHTML = `Phase: <span class="badge badge-phase">${gameState.phase}</span>`;
+  const leader = gameState.players.find(p => p.id === gameState.currentLeader);
+  document.getElementById('leader-display').textContent = leader ? `Leader: ${leader.name}` : '';
+  document.getElementById('rejections-display').textContent = gameState.consecutiveRejections > 0
+    ? `Consecutive rejections: ${gameState.consecutiveRejections}/5` : '';
+
+  const resultEl = document.getElementById('result-display');
+  if (gameState.result) {
+    resultEl.classList.remove('hidden');
+    const color = gameState.result === 'EvilWins' || gameState.result === 'EvilWinsByAssassination' ? 'var(--red)' : 'var(--green)';
+    resultEl.style.color = color;
+    resultEl.textContent = gameState.result === 'GoodWins' ? '🎉 Good Wins!'
+      : gameState.result === 'EvilWins' ? '💀 Evil Wins!'
+      : '🗡 Evil Wins by Assassination!';
+  } else {
+    resultEl.classList.add('hidden');
+  }
+}
+
+function renderActionArea() {
+  const area = document.getElementById('action-area');
+  const ap = activePlayer();
+  if (!ap || gameState.phase === 'Lobby') { area.classList.add('hidden'); return; }
+  area.classList.remove('hidden');
+
+  // Fetch this player's perspective
+  fetchPlayerState(ap.id).then(ps => {
+    renderRoleCard(ps, ap);
+    renderPhaseActions(ps, ap);
+  });
+}
+
+async function fetchPlayerState(playerId) {
+  try {
+    return await api('GET', `${API}/${gameId}`, null, playerId);
+  } catch { return gameState; }
+}
+
+function renderRoleCard(ps, ap) {
+  const roleInfo = document.getElementById('role-info');
+  const visInfo = document.getElementById('visible-info');
+
+  if (ps.yourRole) {
+    const teamColor = ps.yourTeam === 'Good' ? 'var(--green)' : 'var(--red)';
+    roleInfo.innerHTML = `You are <strong style="color:${teamColor}">${ps.yourRole}</strong> (${ps.yourTeam})`;
+  } else {
+    roleInfo.textContent = 'Roles not yet assigned';
+  }
+
+  if (ps.visiblePlayerIds && ps.visiblePlayerIds.length > 0) {
+    const names = ps.visiblePlayerIds.map(id => {
+      const p = gameState.players.find(x => x.id === id);
+      return p ? p.name : id;
+    });
+    visInfo.textContent = `You can see: ${names.join(', ')}`;
+  } else {
+    visInfo.textContent = '';
+  }
+}
+
+function renderPhaseActions(ps, ap) {
+  // Hide all action cards
+  ['propose-card', 'vote-card', 'quest-vote-card', 'result-action-card', 'lady-card', 'assassin-card', 'gameover-card']
+    .forEach(id => document.getElementById(id).classList.add('hidden'));
+
+  const phase = gameState.phase;
+  const isLeader = gameState.currentLeader === ap.id;
+  const cr = gameState.rounds[gameState.rounds.length - 1];
+
+  if (phase === 'TeamProposal' && isLeader) {
+    const card = document.getElementById('propose-card');
+    card.classList.remove('hidden');
+    document.getElementById('team-size-hint').textContent = `(select ${cr.requiredTeamSize})`;
+    const sel = document.getElementById('team-select');
+    sel.innerHTML = '';
+    gameState.players.forEach(p => {
+      const label = document.createElement('label');
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.value = p.id;
+      label.appendChild(input);
+      label.appendChild(document.createTextNode(p.name));
+      sel.appendChild(label);
+    });
+  }
+
+  if (phase === 'TeamVote') {
+    // Check if this player already voted
+    const lastProposal = cr?.proposals[cr.proposals.length - 1];
+    const hasVoted = lastProposal?.votes && lastProposal.votes[ap.id];
+    if (!hasVoted) {
+      const card = document.getElementById('vote-card');
+      card.classList.remove('hidden');
+      const proposed = lastProposal?.proposedPlayerIds.map(id => gameState.players.find(x => x.id === id)?.name).join(', ');
+      const leaderName = gameState.players.find(x => x.id === lastProposal?.leaderPlayerId)?.name;
+      document.getElementById('proposal-info').textContent = `${leaderName} proposes: ${proposed}`;
+    }
+  }
+
+  if (phase === 'Quest') {
+    const quest = cr?.quest;
+    const isOnQuest = quest?.participantIds.includes(ap.id);
+    const hasVoted = quest?.successCount != null; // quest resolved
+    if (isOnQuest && !hasVoted) {
+      const card = document.getElementById('quest-vote-card');
+      card.classList.remove('hidden');
+      // Disable fail for good players
+      document.getElementById('fail-btn').disabled = ps.yourTeam === 'Good';
+    }
+  }
+
+  if (phase === 'QuestResult') {
+    const card = document.getElementById('result-action-card');
+    card.classList.remove('hidden');
+    const quest = cr?.quest;
+    document.getElementById('quest-result-info').innerHTML = quest?.isSuccess
+      ? `<span style="color:var(--green)">Quest Succeeded!</span> (${quest.successCount}✓ ${quest.failCount}✗)`
+      : `<span style="color:var(--red)">Quest Failed!</span> (${quest?.successCount}✓ ${quest?.failCount}✗)`;
+  }
+
+  if (phase === 'LadyOfTheLake') {
+    const ladyHolder = gameState.ladyOfTheLake?.currentHolderId;
+    if (ladyHolder === ap.id) {
+      const card = document.getElementById('lady-card');
+      card.classList.remove('hidden');
+      document.getElementById('lady-result').classList.add('hidden');
+      const select = document.getElementById('lady-target');
+      select.innerHTML = '';
+      const prevHolders = new Set((gameState.ladyOfTheLake?.history || []).map(h => h.targetId));
+      prevHolders.add(ladyHolder);
+      gameState.players.filter(p => !prevHolders.has(p.id)).forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name;
+        select.appendChild(opt);
+      });
+    }
+  }
+
+  if (phase === 'AssassinVote') {
+    const assassin = gameState.players.find(p => ps.yourRole === 'Assassin' && p.id === ap.id);
+    if (assassin || ps.yourRole === 'Assassin') {
+      const card = document.getElementById('assassin-card');
+      card.classList.remove('hidden');
+      const select = document.getElementById('assassin-target');
+      select.innerHTML = '';
+      // Target good players (from visible info or all non-evil)
+      gameState.players.filter(p => p.id !== ap.id).forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name;
+        select.appendChild(opt);
+      });
+    }
+  }
+
+  if (phase === 'GameOver') {
+    const card = document.getElementById('gameover-card');
+    card.classList.remove('hidden');
+    const list = document.getElementById('reveal-list');
+    list.innerHTML = '';
+    gameState.players.forEach(p => {
+      const li = document.createElement('li');
+      const dot = document.createElement('span');
+      dot.className = 'dot ' + (p.team === 'Good' ? 'dot-good' : 'dot-evil');
+      li.appendChild(dot);
+      li.appendChild(document.createTextNode(`${p.name} — ${p.role} (${p.team})`));
+      list.appendChild(li);
+    });
+  }
+}
+
+// --- Logging ---
+function log(action, status, detail) {
+  const body = document.getElementById('log-body');
+  const ts = new Date().toLocaleTimeString();
+  body.innerHTML = `<div class="log-entry"><span class="ts">${ts}</span> <span class="evt">${action}</span> ${status} <span class="msg">${detail || ''}</span></div>` + body.innerHTML;
+}
+
+function logEvent(event, detail) {
+  const body = document.getElementById('log-body');
+  const ts = new Date().toLocaleTimeString();
+  body.innerHTML = `<div class="log-entry"><span class="ts">${ts}</span> <span class="evt">⚡ ${event}</span> <span class="msg">${detail}</span></div>` + body.innerHTML;
+}
+
+function toggleLog() {
+  logExpanded = !logExpanded;
+  document.getElementById('log-body').style.display = logExpanded ? 'block' : 'none';
+  document.getElementById('log-toggle').textContent = logExpanded ? '▼' : '▲';
+}
+
+function copyGameId() {
+  navigator.clipboard.writeText(gameId);
+  log('Copied', '✓', `Game ID: ${gameId}`);
+}
+</script>
+</body>
+</html>
