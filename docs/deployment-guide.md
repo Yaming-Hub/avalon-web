@@ -125,33 +125,36 @@ az role assignment create \
 **Status:** ✅ Done
 
 > **⚠️ Troubleshooting: Contributor role on resource group is not enough.**
-> The initial deployment assigned Contributor only at the resource-group scope. However, the OIDC login (`azure/login@v2`) needs to **discover the subscription** during `az login`, which failed with:
-> ```
-> No subscriptions found for ***
-> ```
-> **Fix:** Add **Reader** at the subscription level so the service principal can list subscriptions:
+> The initial deployment assigned Contributor only at the resource-group scope. This caused two issues:
+> 1. OIDC login (`azure/login@v2`) could not discover the subscription: `No subscriptions found for ***`
+> 2. Deploy step could not publish: `does not have authorization to perform action 'Microsoft.Web/sites/publishxml/action'`
+>
+> **Fix:** Assign **Contributor at the subscription level** instead, which resolves both issues:
 > ```bash
 > az role assignment create \
 >   --assignee 8fc566f7-a49c-4714-8663-7c17309f5c10 \
->   --role Reader \
+>   --role Contributor \
 >   --scope /subscriptions/f3eecfde-cfdc-4b28-b997-c3cd03854318
 > ```
-> This was done on 2026-04-04.
 
 ---
 
-### Step 3b — Assign Subscription-level Reader Role
+### Step 3b — Assign Subscription-level Contributor Role
 
-Required so the service principal can discover the subscription during OIDC login.
+Required so the service principal can discover subscriptions during OIDC login and deploy to App Service.
 
 ```bash
 az role assignment create \
   --assignee 8fc566f7-a49c-4714-8663-7c17309f5c10 \
-  --role Reader \
+  --role Contributor \
   --scope /subscriptions/f3eecfde-cfdc-4b28-b997-c3cd03854318
 ```
 
 **Status:** ✅ Done
+
+---
+
+### Step 4 — Add Federated Credential for GitHub Actions
 
 Use the **object `id`** (not `appId`) from Step 1.
 
@@ -266,7 +269,7 @@ Push any change to the `main` branch, or manually trigger via **GitHub → Actio
 > The build and all 26 tests passed, but `azure/login@v2` failed with `No subscriptions found`.
 > **Fix:** After adding the Reader role (Step 3b), re-run the failed workflow via **GitHub → Actions → click failed run → Re-run failed jobs**.
 
-**Status:** ⬜ Pending — re-run after Step 3b is done
+**Status:** ✅ Done
 
 ---
 
