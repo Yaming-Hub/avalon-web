@@ -188,17 +188,41 @@ Go to **GitHub repo → Settings → Secrets and variables → Actions → Repos
 
 ### Step 6 — Provision Azure Infrastructure (one-time)
 
-```bash
-az deployment group create \
-  --resource-group avolon-web \
-  --template-file infra/main.bicep
+```powershell
+az deployment group create `
+  --resource-group avolon-web `
+  --template-file infra/main.bicep `
+  --parameters location=centralus `
+  --name "avolon-web-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 ```
 
+> **Note:** The resource group is in Central US. A unique deployment name with timestamp is used to avoid conflicts.
+
 This creates:
-- **App Service Plan** (`avolon-web-plan`): Linux, B1 SKU
+- **App Service Plan** (`avolon-web-plan`): Linux, F1 (Free) SKU, Central US
 - **Web App** (`avolon-web`): .NET 8, WebSockets enabled, HTTPS only
 
-**Status:** ⬜ Pending
+<details>
+<summary>Response (abbreviated)</summary>
+
+```json
+{
+  "provisioningState": "Succeeded",
+  "outputs": {
+    "webAppName": { "value": "avolon-web" },
+    "webAppUrl": { "value": "https://avolon-web.azurewebsites.net" }
+  },
+  "parameters": {
+    "appName": { "value": "avolon-web" },
+    "location": { "value": "centralus" },
+    "sku": { "value": "F1" }
+  }
+}
+```
+
+</details>
+
+**Status:** ✅ Done
 
 ---
 

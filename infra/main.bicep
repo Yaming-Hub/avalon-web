@@ -6,7 +6,7 @@ param location string = resourceGroup().location
 
 @description('The SKU of the App Service Plan')
 @allowed(['F1', 'B1', 'B2', 'S1', 'P1v3'])
-param sku string = 'B1'
+param sku string = 'F1'
 
 resource appServicePlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: '${appName}-plan'
@@ -29,6 +29,7 @@ resource webApp 'Microsoft.Web/sites@2023-12-01' = {
       linuxFxVersion: 'DOTNETCORE|8.0'
       webSocketsEnabled: true // required for SignalR
       alwaysOn: sku != 'F1' // F1 does not support AlwaysOn
+      appCommandLine: 'dotnet Avalon.Web.dll'
     }
     httpsOnly: true
   }
