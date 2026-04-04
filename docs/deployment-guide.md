@@ -124,9 +124,34 @@ az role assignment create \
 
 **Status:** ✅ Done
 
+> **⚠️ Troubleshooting: Contributor role on resource group is not enough.**
+> The initial deployment assigned Contributor only at the resource-group scope. However, the OIDC login (`azure/login@v2`) needs to **discover the subscription** during `az login`, which failed with:
+> ```
+> No subscriptions found for ***
+> ```
+> **Fix:** Add **Reader** at the subscription level so the service principal can list subscriptions:
+> ```bash
+> az role assignment create \
+>   --assignee 8fc566f7-a49c-4714-8663-7c17309f5c10 \
+>   --role Reader \
+>   --scope /subscriptions/f3eecfde-cfdc-4b28-b997-c3cd03854318
+> ```
+> This was done on 2026-04-04.
+
 ---
 
-### Step 4 — Add Federated Credential for GitHub Actions
+### Step 3b — Assign Subscription-level Reader Role
+
+Required so the service principal can discover the subscription during OIDC login.
+
+```bash
+az role assignment create \
+  --assignee 8fc566f7-a49c-4714-8663-7c17309f5c10 \
+  --role Reader \
+  --scope /subscriptions/f3eecfde-cfdc-4b28-b997-c3cd03854318
+```
+
+**Status:** ✅ Done
 
 Use the **object `id`** (not `appId`) from Step 1.
 
@@ -188,6 +213,12 @@ Go to **GitHub repo → Settings → Secrets and variables → Actions → Repos
 
 ### Step 6 — Provision Azure Infrastructure (one-time)
 
+> **⚠️ Troubleshooting: VM quota issues.**
+> The initial Bicep template used **B1 (Basic)** SKU, which failed with `SubscriptionIsOverQuotaForSku` — the subscription had 0 Basic VM quota in West US 2.
+> Switching to **F1 (Free)** also failed in West US 2 (0 Free VM quota there).
+> **Fix:** Created the resource group in **Central US** where Free tier quota was available, and changed the Bicep default SKU from B1 to F1.
+> Note: F1 has limitations — no WebSocket support, no always-on, 60 min/day CPU. Upgrade to B1+ when quota is available for full SignalR support.
+
 ```powershell
 az deployment group create `
   --resource-group avolon-web `
@@ -230,7 +261,12 @@ This creates:
 
 Push any change to the `main` branch, or manually trigger via **GitHub → Actions → Build and Deploy → Run workflow**.
 
-**Status:** ⬜ Pending
+> **⚠️ Troubleshooting: First deployment failed at Azure login.**
+> The first automatic workflow run (triggered by push) failed because Step 3b (subscription-level Reader role) had not been completed yet.
+> The build and all 26 tests passed, but `azure/login@v2` failed with `No subscriptions found`.
+> **Fix:** After adding the Reader role (Step 3b), re-run the failed workflow via **GitHub → Actions → click failed run → Re-run failed jobs**.
+
+**Status:** ⬜ Pending — re-run after Step 3b is done
 
 ---
 
