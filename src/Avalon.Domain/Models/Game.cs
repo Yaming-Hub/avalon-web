@@ -39,12 +39,13 @@ public class Game
     {
         lock (_lock)
         {
-            EnsurePhase(GamePhase.Lobby);
-
-            // Allow re-join if a player with the same name already exists
+            // Allow re-join by name in any phase (e.g. reconnecting after closing the browser)
             var existing = Players.FirstOrDefault(p => p.Name.Equals(playerName, StringComparison.OrdinalIgnoreCase));
             if (existing != null)
                 return existing;
+
+            // New players can only join during the lobby phase
+            EnsurePhase(GamePhase.Lobby);
 
             if (Players.Count >= GameConfiguration.MaxPlayers)
                 throw new InvalidOperationException($"Game is full (max {GameConfiguration.MaxPlayers} players).");
