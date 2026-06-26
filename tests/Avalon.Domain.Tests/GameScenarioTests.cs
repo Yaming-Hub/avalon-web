@@ -39,8 +39,12 @@ public class GameScenarioTests
     private static void ProposeAndApproveTeam(Game game, List<string> teamPlayerIds)
     {
         game.ProposeTeam(game.CurrentLeader!.Id, teamPlayerIds);
+        var leaderId = game.CurrentRound!.Proposals[^1].LeaderPlayerId;
         foreach (var player in game.Players)
+        {
+            if (player.Id == leaderId) continue; // Leader auto-approves
             game.VoteOnProposal(player.Id, VoteType.Approve);
+        }
     }
 
     private static void RunSuccessfulQuest(Game game)
@@ -165,9 +169,13 @@ public class GameScenarioTests
 
             Assert.AreEqual(GamePhase.TeamVote, game.Phase);
 
-            // Majority rejects (all reject)
+            // Majority rejects (all non-leader reject, leader auto-approves)
+            var leaderId = game.CurrentRound!.Proposals[^1].LeaderPlayerId;
             foreach (var player in game.Players)
+            {
+                if (player.Id == leaderId) continue;
                 game.VoteOnProposal(player.Id, VoteType.Reject);
+            }
         }
 
         Assert.AreEqual(GamePhase.GameOver, game.Phase);

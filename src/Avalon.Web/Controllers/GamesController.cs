@@ -213,4 +213,22 @@ public class GamesController : ControllerBase
             return BadRequest(ex.Message);
         }
     }
+
+    [HttpPost("{id}/restart")]
+    public async Task<IActionResult> RestartGame(string id, [FromHeader(Name = "X-Player-Id")] string playerId)
+    {
+        try
+        {
+            await _gameService.RestartGameAsync(id, playerId);
+            return NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
 }
