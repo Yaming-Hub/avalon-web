@@ -720,16 +720,17 @@ function renderPhaseActions(ps, ap) {
   if (phase === 'TeamVote') {
     const lastProposal = cr?.proposals[cr.proposals.length - 1];
 
-    // Leader doesn't vote — show a status message instead
+    // Leader has auto-approved but can change to Reject
     if (lastProposal?.leaderPlayerId === ap.id) {
       const card = document.getElementById('vote-card');
       card.classList.remove('hidden');
       const proposed = lastProposal?.proposedPlayerIds.map(id => gameState.players.find(x => x.id === id)?.name).join(', ');
-      document.getElementById('proposal-info').textContent = `Your proposal: [${proposed}]. Your approval is automatic. Waiting for others to vote.`;
+      document.getElementById('proposal-info').textContent = `Your proposal: [${proposed}]. Your approval is automatic. You can change to Reject below.`;
       document.getElementById('approve-btn').classList.add('voted');
-      document.getElementById('reject-btn').classList.add('voted');
       document.getElementById('approve-btn').disabled = true;
-      document.getElementById('reject-btn').disabled = true;
+      // Allow leader to reject their own proposal
+      document.getElementById('reject-btn').classList.remove('voted');
+      document.getElementById('reject-btn').disabled = false;
     } else {
       // Check if this player already voted
       const hasVoted = lastProposal?.votedPlayerIds?.includes(ap.id);

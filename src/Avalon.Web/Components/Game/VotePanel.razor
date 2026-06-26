@@ -19,11 +19,22 @@
             <p class="error-text">⚠ @State.ConsecutiveRejections/5 consecutive rejections</p>
         }
 
-        @if (HasVoted)
+        @if (IsLeader)
+        {
+            <div class="waiting">
+                <p>Your approval is automatic. You can change your vote to Reject if you wish.</p>
+                <div class="btn-row">
+                    <button class="btn btn-danger" @onclick="() => Vote(VoteType.Reject)">
+                        ✗ Change to Reject
+                    </button>
+                </div>
+            </div>
+        }
+        else if (HasVoted)
         {
             <div class="waiting">
                 <div class="spinner"></div>
-                <p>Waiting for others to vote...</p>
+                <p>Vote submitted. Waiting for others to vote...</p>
             </div>
         }
         else
@@ -56,8 +67,11 @@
     private ProposalView? _currentProposal =>
         State.Rounds.LastOrDefault()?.Proposals.LastOrDefault();
 
+    private bool IsLeader =>
+        _currentProposal?.LeaderPlayerId == PlayerId;
+
     private bool HasVoted =>
-        _currentProposal?.Votes is not null && _currentProposal.Votes.ContainsKey(PlayerId);
+        _currentProposal?.VotedPlayerIds is not null && _currentProposal.VotedPlayerIds.Contains(PlayerId);
 
     private string GetPlayerName(string playerId) =>
         State.Players.FirstOrDefault(p => p.Id == playerId)?.Name ?? "Unknown";

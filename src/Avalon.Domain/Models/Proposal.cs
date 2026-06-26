@@ -17,6 +17,13 @@ public class Proposal
 
     public void CastVote(string playerId, VoteType vote)
     {
+        // Allow the leader to override their auto-approve vote
+        if (Votes.ContainsKey(playerId) && playerId == LeaderPlayerId)
+        {
+            Votes[playerId] = vote;
+            return;
+        }
+
         if (Votes.ContainsKey(playerId))
             throw new InvalidOperationException($"Player {playerId} has already voted.");
         Votes[playerId] = vote;
