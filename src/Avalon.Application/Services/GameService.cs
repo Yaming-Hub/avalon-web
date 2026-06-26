@@ -162,6 +162,10 @@ public class GameService
                 if (!proposal.IsApproved.Value && game.ConsecutiveRejections > 0)
                     _chat.PostMessage(gameId, "System", $"⚠️ {game.ConsecutiveRejections}/5 consecutive rejections.", isSystem: true);
             }
+
+            if (game.Phase == GamePhase.GameOver)
+                _chat.PostMessage(gameId, "System", "💀 5 consecutive rejections! Evil wins!", isSystem: true);
+
             await _notifier.NotifyPhaseChanged(gameId, game.Phase.ToString());
         }
 
@@ -251,12 +255,22 @@ public class GameService
     public async Task AssassinateAsync(string gameId, string assassinPlayerId, string targetPlayerId)
     {
         var game = await GetGameOrThrow(gameId);
+        var targetName = game.Players.First(p => p.Id == targetPlayerId).Name;
         _log.Log(gameId, "Action", "Assassination attempt", new { assassinPlayerId, targetPlayerId });
 
         game.Assassinate(assassinPlayerId, targetPlayerId);
         await _repository.SaveAsync(game);
 
         _log.Log(gameId, "Phase", $"Game over: {game.Result}", new { target = game.AssassinTargetId });
+
+        var resultMsg = game.Result switch
+        {
+            GameResult.EvilWinsByAssassination => $"🗡️ The Assassin targeted {targetName} — it was Merlin! Evil wins by assassination!",
+            GameResult.GoodWins => $"🗡️ The Assassin targeted {targetName} — wrong guess! Good wins!",
+            _ => "Game over!"
+        };
+        _chat.PostMessage(gameId, "System", resultMsg, isSystem: true);
+
         await _notifier.NotifyGameOver(gameId, game.Result!.ToString()!);
     }
 
@@ -265,6 +279,12 @@ public class GameService
         var game = await GetGameOrThrow(gameId);
         game.Restart(hostPlayerId);
         await _repository.SaveAsync(game);
+
+        // Add visual separator in chat between games
+        _chat.PostMessage(gameId, "System", "─────────────────────────────", isSystem: true);
+        _chat.PostMessage(gameId, "System", "", isSystem: true);
+        _chat.PostMessage(gameId, "System", "", isSystem: true);
+        _chat.PostMessage(gameId, "System", "🔄 New game started with same players!", isSystem: true);
 
         await _notifier.NotifyPhaseChanged(gameId, game.Phase.ToString());
     }

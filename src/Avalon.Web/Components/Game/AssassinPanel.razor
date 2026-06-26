@@ -50,7 +50,7 @@
     private bool IsAssassin => State.YourRole == "Assassin";
 
     private IEnumerable<PlayerView> TargetablePlayers =>
-        State.Players.Where(p => p.Id != PlayerId && (p.Team == "Good" || p.Team is null));
+        State.Players.Where(p => p.Id != PlayerId && !(State.VisiblePlayerIds?.Contains(p.Id) == true));
 
     private async Task Assassinate()
     {

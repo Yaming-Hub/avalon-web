@@ -844,7 +844,10 @@ function renderPhaseActions(ps, ap) {
       card.classList.remove('hidden');
       const select = document.getElementById('assassin-target');
       select.innerHTML = '';
-      gameState.players.filter(p => p.id !== ap.id).forEach(p => {
+      // Exclude self and known evil players (from visiblePlayerIds)
+      const knownEvil = new Set(ps.visiblePlayerIds || []);
+      knownEvil.add(ap.id);
+      gameState.players.filter(p => !knownEvil.has(p.id)).forEach(p => {
         const opt = document.createElement('option');
         opt.value = p.id;
         opt.textContent = p.name;
