@@ -185,6 +185,18 @@ public class GameLogicTests
         StringAssert.Contains(ex.Message, "Lobby");
     }
 
+    [TestMethod]
+    public void Join_AfterGameStarted_ExistingPlayerCanRejoin()
+    {
+        var game = CreateStartedGame();
+        var originalPlayer = game.Players[1]; // non-host player
+
+        var rejoined = game.Join(originalPlayer.Name);
+
+        Assert.AreEqual(originalPlayer.Id, rejoined.Id);
+        Assert.AreEqual(originalPlayer.Name, rejoined.Name);
+    }
+
     #endregion
 
     #region Lobby Tests
