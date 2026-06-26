@@ -1,3 +1,5 @@
+@inject GameService GameService
+
 <div class="card">
     @switch (State.Result)
     {
@@ -38,7 +40,18 @@
         }
     </div>
 
-    <a class="btn btn-primary btn-lg btn-block" href="/">New Game</a>
+    <div class="btn-row">
+        @if (IsHost)
+        {
+            <button class="btn btn-success btn-lg" @onclick="RestartGame">🔄 Play Again (Same Players)</button>
+        }
+        <a class="btn btn-primary btn-lg" href="/">Create New Game</a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <div class="error-text">@_error</div>
+    }
 </div>
 
 @code {
@@ -47,8 +60,26 @@
     [Parameter] public GameStateResponse State { get; set; } = default!;
     [Parameter] public EventCallback OnAction { get; set; }
 
+    private string? _error;
+
+    private bool IsHost => State.Players.FirstOrDefault(p => p.IsHost)?.Id == PlayerId;
+
     private string GetPlayerName(string playerId) =>
         State.Players.FirstOrDefault(p => p.Id == playerId)?.Name ?? "Unknown";
+
+    private async Task RestartGame()
+    {
+        _error = null;
+        try
+        {
+            await GameService.RestartGameAsync(GameId, PlayerId);
+            await OnAction.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
 
     private static string GetCardImage(string? role)
     {
