@@ -13,14 +13,16 @@ public class GameService
     private readonly GameStateMapper _mapper;
     private readonly BotService _botService;
     private readonly IActivityLog _log;
+    private readonly IConversationService _chat;
 
-    public GameService(IGameRepository repository, IGameNotifier notifier, GameStateMapper mapper, BotService botService, IActivityLog log)
+    public GameService(IGameRepository repository, IGameNotifier notifier, GameStateMapper mapper, BotService botService, IActivityLog log, IConversationService chat)
     {
         _repository = repository;
         _notifier = notifier;
         _mapper = mapper;
         _botService = botService;
         _log = log;
+        _chat = chat;
     }
 
     public async Task<CreateGameResponse> CreateGameAsync(string hostName)
@@ -44,6 +46,7 @@ public class GameService
         if (game.Players.Count > countBefore)
         {
             _log.Log(gameId, "Player", $"'{playerName}' joined (new)", new { playerId = player.Id });
+            _chat.PostMessage(gameId, "System", $"{playerName} joined the game.", isSystem: true);
             await _notifier.NotifyPlayerJoined(gameId, playerName);
         }
         else
@@ -97,6 +100,8 @@ public class GameService
         _log.Log(gameId, "Phase", $"Game started → {game.Phase}", new { leader = game.CurrentLeader?.Name, round = game.CurrentRound?.RoundNumber });
         _log.Log(gameId, "Roles", "Roles assigned", new { roles = game.Players.Select(p => new { p.Name, Role = p.Role?.ToString(), Team = p.Team?.ToString() }).ToList() });
 
+        _chat.PostMessage(gameId, "System", $"🎮 Game started! Round 1 begins. {game.CurrentLeader?.Name} is the first leader.", isSystem: true);
+
         await _notifier.NotifyGameStarted(gameId);
         await _notifier.NotifyPhaseChanged(gameId, game.Phase.ToString());
 
@@ -114,6 +119,9 @@ public class GameService
 
         var proposedNames = proposedPlayerIds.Select(id => game.Players.First(p => p.Id == id).Name).ToList();
         _log.Log(gameId, "Phase", $"Team proposed → {game.Phase}", new { leader = leaderName, team = proposedNames });
+
+        _chat.PostMessage(gameId, leaderName, $"proposed team: {string.Join(", ", proposedNames)}");
+
 
         await _notifier.NotifyTeamProposed(gameId, leaderName, proposedNames);
         await _notifier.NotifyPhaseChanged(gameId, game.Phase.ToString());
@@ -141,6 +149,18 @@ public class GameService
                     kv => kv.Value.ToString());
                 _log.Log(gameId, "Phase", $"Proposal {(proposal.IsApproved.Value ? "APPROVED" : "REJECTED")} → {game.Phase}", new { votes, consecutiveRejections = game.ConsecutiveRejections });
                 await _notifier.NotifyVoteRevealed(gameId, votes);
+
+                // Post vote results to conversation
+                var approvers = votes.Where(kv => kv.Value == "Approve").Select(kv => kv.Key).ToList();
+                var rejecters = votes.Where(kv => kv.Value == "Reject").Select(kv => kv.Key).ToList();
+                var resultText = proposal.IsApproved.Value ? "✅ Team APPROVED" : "❌ Team REJECTED";
+                var voteDetail = "";
+                if (approvers.Count > 0) voteDetail += $"Approve: {string.Join(", ", approvers)}";
+                if (rejecters.Count > 0) voteDetail += (voteDetail.Length > 0 ? " | " : "") + $"Reject: {string.Join(", ", rejecters)}";
+                _chat.PostMessage(gameId, "System", $"{resultText} ({approvers.Count}👍 {rejecters.Count}👎). {voteDetail}", isSystem: true);
+
+                if (!proposal.IsApproved.Value && game.ConsecutiveRejections > 0)
+                    _chat.PostMessage(gameId, "System", $"⚠️ {game.ConsecutiveRejections}/5 consecutive rejections.", isSystem: true);
             }
             await _notifier.NotifyPhaseChanged(gameId, game.Phase.ToString());
         }
@@ -162,6 +182,13 @@ public class GameService
         {
             var quest = game.CurrentRound!.Quest!;
             _log.Log(gameId, "Phase", $"Quest resolved ({quest.SuccessCount}✓ {quest.FailCount}✗) → {game.Phase}", new { success = quest.IsSuccess });
+
+            var questResult = quest.IsSuccess!.Value
+                ? $"✅ Quest PASSED ({quest.SuccessCount} success, {quest.FailCount} fail)"
+                : $"❌ Quest FAILED ({quest.SuccessCount} success, {quest.FailCount} fail)";
+            _chat.PostMessage(gameId, "System", questResult, isSystem: true);
+            _chat.PostMessage(gameId, "System", $"Score: Good {game.CompletedQuestsGood} — Evil {game.CompletedQuestsEvil}", isSystem: true);
+
             await _notifier.NotifyQuestResult(gameId, quest.SuccessCount, quest.FailCount);
             await _notifier.NotifyPhaseChanged(gameId, game.Phase.ToString());
         }
@@ -178,6 +205,20 @@ public class GameService
         await _repository.SaveAsync(game);
 
         _log.Log(gameId, "Phase", $"Proceeded → {game.Phase}", new { goodWins = game.CompletedQuestsGood, evilWins = game.CompletedQuestsEvil });
+
+        if (game.Phase == GamePhase.TeamProposal)
+            _chat.PostMessage(gameId, "System", $"📋 Round {game.CurrentRound?.RoundNumber} begins. {game.CurrentLeader?.Name} is the leader. Team size: {game.CurrentRound?.RequiredTeamSize}", isSystem: true);
+        else if (game.Phase == GamePhase.GameOver)
+        {
+            var resultMsg = game.Result switch
+            {
+                GameResult.GoodWins => "🎉 Good wins! The forces of good have triumphed!",
+                GameResult.EvilWins => "💀 Evil wins! The forces of darkness prevail!",
+                GameResult.EvilWinsByAssassination => "🗡️ Evil wins by assassination! Merlin has been found!",
+                _ => "Game over!"
+            };
+            _chat.PostMessage(gameId, "System", resultMsg, isSystem: true);
+        }
 
         await _notifier.NotifyPhaseChanged(gameId, game.Phase.ToString());
 
@@ -237,6 +278,19 @@ public class GameService
             await _repository.SaveAsync(game);
             _log.Log(gameId, "Security", "⚠️ Activity logs accessed — game integrity compromised");
         }
+    }
+
+    public async Task PostChatMessageAsync(string gameId, string playerId, string message)
+    {
+        var game = await GetGameOrThrow(gameId);
+        var player = game.Players.FirstOrDefault(p => p.Id == playerId)
+            ?? throw new InvalidOperationException("Player not found in game.");
+        _chat.PostMessage(gameId, player.Name, message);
+    }
+
+    public List<ConversationMessage> GetChatMessages(string gameId, int? since = null)
+    {
+        return _chat.GetMessages(gameId, since);
     }
 
     public async Task<List<JoinGameResponse>> AddBotsAsync(string gameId, string hostPlayerId, int count)

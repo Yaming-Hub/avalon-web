@@ -274,4 +274,30 @@ public class GamesController : ControllerBase
 
         return Ok(logs);
     }
+
+    [HttpGet("{id}/chat")]
+    public ActionResult GetChat(string id, [FromQuery] int? since)
+    {
+        var messages = _gameService.GetChatMessages(id, since);
+        return Ok(messages);
+    }
+
+    [HttpPost("{id}/chat")]
+    public async Task<ActionResult> PostChat(string id, [FromBody] ChatRequest request,
+        [FromHeader(Name = "X-Player-Id")] string playerId)
+    {
+        try
+        {
+            await _gameService.PostChatMessageAsync(id, playerId, request.Message);
+            return NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
 }

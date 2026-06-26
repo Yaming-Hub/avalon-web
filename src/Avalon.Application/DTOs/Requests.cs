@@ -27,3 +27,5 @@ public record QuestVoteRequest(string Vote);
 public record AssassinateRequest(string TargetPlayerId);
 
 public record LadyInvestigateRequest(string TargetPlayerId);
+
+public record ChatRequest(string Message);
