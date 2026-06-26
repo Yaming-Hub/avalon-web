@@ -1,0 +1,121 @@
+@page "/rules"
+
+<div class="rules-page">
+    <h1>🏰 Avalon — Game Rules</h1>
+
+    <div class="rules-section">
+        <h2>Overview</h2>
+        <p>
+            Avalon is a game of hidden loyalty. Players are secretly divided into two teams:
+            <strong style="color:var(--green)">Good</strong> (Loyal Servants of Arthur) and
+            <strong style="color:var(--red)">Evil</strong> (Minions of Mordred).
+        </p>
+        <p>Good wins by completing 3 quests successfully. Evil wins by failing 3 quests, or by assassinating Merlin at the end.</p>
+    </div>
+
+    <div class="rules-section">
+        <h2>Teams</h2>
+        <table class="rules-table">
+            <thead><tr><th>Players</th><th>Good</th><th>Evil</th></tr></thead>
+            <tbody>
+                <tr><td>5</td><td>3</td><td>2</td></tr>
+                <tr><td>6</td><td>4</td><td>2</td></tr>
+                <tr><td>7</td><td>4</td><td>3</td></tr>
+                <tr><td>8</td><td>5</td><td>3</td></tr>
+                <tr><td>9</td><td>6</td><td>3</td></tr>
+                <tr><td>10</td><td>6</td><td>4</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="rules-section">
+        <h2>Game Phases</h2>
+
+        <h3>1. Team Proposal</h3>
+        <p>The current leader selects a team to go on the quest. The team size depends on the round and number of players.</p>
+
+        <h3>2. Team Vote</h3>
+        <p>All players vote to Approve or Reject the proposed team. A strict majority (more than half) must approve. The leader's approval is automatic but they can change it to Reject.</p>
+        <p><em>If 5 proposals in a row are rejected, Evil wins immediately!</em></p>
+
+        <h3>3. Quest</h3>
+        <p>Approved team members secretly vote Success or Fail. Anyone can vote either way. Only the totals are revealed.</p>
+        <p>The quest fails if the number of Fail votes meets or exceeds the required threshold (usually 1, but Quest 4 with 7+ players needs 2 Fails).</p>
+
+        <h3>4. Quest Result</h3>
+        <p>The results are shown. If 3 quests succeed, Good may win (Assassin phase follows). If 3 quests fail, Evil wins.</p>
+
+        <h3>5. Assassination (if applicable)</h3>
+        <p>If Good wins 3 quests and Merlin is in play, the Assassin gets one chance to identify Merlin. If correct, Evil wins! Only non-Evil players are shown as targets.</p>
+    </div>
+
+    <div class="rules-section">
+        <h2>Special Roles</h2>
+
+        <h3 style="color:var(--green)">Good Team</h3>
+        <ul>
+            <li><strong>Merlin</strong> — Knows all Evil players (except Mordred). Must stay hidden or Evil can assassinate them.</li>
+            <li><strong>Percival</strong> — Knows who Merlin and Morgana are (but not which is which).</li>
+            <li><strong>Loyal Servant</strong> — No special knowledge. Must deduce through gameplay.</li>
+        </ul>
+
+        <h3 style="color:var(--red)">Evil Team</h3>
+        <ul>
+            <li><strong>Assassin</strong> — Knows other Evil players. Gets to assassinate at the end if Good wins.</li>
+            <li><strong>Morgana</strong> — Appears as Merlin to Percival.</li>
+            <li><strong>Mordred</strong> — Hidden from Merlin's knowledge.</li>
+            <li><strong>Oberon</strong> — Evil but unknown to other Evil players (and cannot see them).</li>
+        </ul>
+    </div>
+
+    <div class="rules-section">
+        <h2>Quest Team Sizes</h2>
+        <table class="rules-table">
+            <thead><tr><th>Players</th><th>Quest 1</th><th>Quest 2</th><th>Quest 3</th><th>Quest 4</th><th>Quest 5</th></tr></thead>
+            <tbody>
+                <tr><td>5</td><td>2</td><td>3</td><td>2</td><td>3</td><td>3</td></tr>
+                <tr><td>6</td><td>2</td><td>3</td><td>4</td><td>3</td><td>4</td></tr>
+                <tr><td>7</td><td>2</td><td>3</td><td>3</td><td>4*</td><td>4</td></tr>
+                <tr><td>8</td><td>3</td><td>4</td><td>4</td><td>5*</td><td>5</td></tr>
+                <tr><td>9</td><td>3</td><td>4</td><td>4</td><td>5*</td><td>5</td></tr>
+                <tr><td>10</td><td>3</td><td>4</td><td>4</td><td>5*</td><td>5</td></tr>
+            </tbody>
+        </table>
+        <p><em>* Quest 4 with 7+ players requires 2 Fail votes to fail the quest.</em></p>
+    </div>
+
+    <div class="rules-section">
+        <h2>Lady of the Lake (Optional)</h2>
+        <p>After Quests 2, 3, and 4, the Lady of the Lake holder can investigate one player to learn their team alignment (Good or Evil). The Lady then passes to the investigated player. The information is private — you can share it or lie about it!</p>
+    </div>
+
+    <div class="rules-section">
+        <h2>Tips</h2>
+        <ul>
+            <li>Use the <strong>❓ Help</strong> button during any phase to get context-specific guidance.</li>
+            <li>Pay attention to who approves and rejects teams — it reveals loyalties.</li>
+            <li>Evil players should try to get on quests without being obvious.</li>
+            <li>Merlin should guide Good subtly without revealing their identity.</li>
+            <li>Use the chat to discuss and debate team compositions!</li>
+        </ul>
+    </div>
+
+    <div style="text-align:center; margin-top:24px">
+        <a class="btn btn-primary" href="/">← Back to Game</a>
+    </div>
+</div>
+
+<style>
+    .rules-page { max-width: 800px; margin: 0 auto; padding: 24px; }
+    .rules-page h1 { color: var(--gold); margin-bottom: 24px; text-align: center; }
+    .rules-section { margin-bottom: 24px; background: var(--card); padding: 16px 20px; border-radius: 8px; }
+    .rules-section h2 { color: var(--blue); margin-bottom: 12px; font-size: 1.2em; }
+    .rules-section h3 { margin-top: 12px; margin-bottom: 6px; font-size: 1em; }
+    .rules-section p { margin-bottom: 8px; line-height: 1.6; color: var(--text); }
+    .rules-section ul { padding-left: 20px; margin-bottom: 8px; }
+    .rules-section li { margin-bottom: 6px; line-height: 1.5; }
+    .rules-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 0.9em; }
+    .rules-table th, .rules-table td { padding: 6px 12px; border: 1px solid #333; text-align: center; }
+    .rules-table th { background: var(--accent); color: var(--blue); }
+    .rules-table td { background: #0a0a1a; }
+</style>
