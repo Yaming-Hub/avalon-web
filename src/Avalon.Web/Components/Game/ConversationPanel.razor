@@ -1,0 +1,86 @@
+@inject GameService GameService
+@implements IDisposable
+
+<div class="card conversation-panel">
+    <h3>💬 Chat</h3>
+    <div class="chat-messages" @ref="_messagesContainer">
+        @foreach (var msg in _messages)
+        {
+            <div class="chat-message @(msg.IsSystem ? "system-message" : "player-message")">
+                <span class="chat-sender">@(msg.IsSystem ? "⚙️" : "") @msg.Sender:</span>
+                <span class="chat-text">@msg.Message</span>
+            </div>
+        }
+    </div>
+    <div class="chat-input-row">
+        <input type="text" class="chat-input" placeholder="Type a message..." @bind="_inputMessage" @onkeydown="HandleKeyDown" />
+        <button class="btn btn-primary btn-sm" @onclick="SendMessage" disabled="@string.IsNullOrWhiteSpace(_inputMessage)">Send</button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string GameId { get; set; } = default!;
+    [Parameter] public string PlayerId { get; set; } = default!;
+
+    private List<ConversationMessage> _messages = new();
+    private string _inputMessage = "";
+    private int _lastMessageId;
+    private Timer? _pollTimer;
+    private ElementReference _messagesContainer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMessages();
+        _pollTimer = new Timer(async _ => await PollMessages(), null, 2000, 2000);
+    }
+
+    private async Task LoadMessages()
+    {
+        try
+        {
+            _messages = GameService.GetChatMessages(GameId);
+            if (_messages.Count > 0)
+                _lastMessageId = _messages[^1].Id;
+        }
+        catch { }
+    }
+
+    private async Task PollMessages()
+    {
+        try
+        {
+            var newMessages = GameService.GetChatMessages(GameId, _lastMessageId);
+            if (newMessages.Count > 0)
+            {
+                _messages.AddRange(newMessages);
+                _lastMessageId = newMessages[^1].Id;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch { }
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(_inputMessage)) return;
+
+        try
+        {
+            await GameService.PostChatMessageAsync(GameId, PlayerId, _inputMessage);
+            _inputMessage = "";
+            await PollMessages();
+        }
+        catch { }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await SendMessage();
+    }
+
+    public void Dispose()
+    {
+        _pollTimer?.Dispose();
+    }
+}
