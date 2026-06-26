@@ -319,11 +319,29 @@ input[type="text"]::placeholder { color: #555; }
 .phase-bar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 12px;
     padding: 8px 16px;
     background: var(--accent);
     border-radius: var(--radius);
     font-size: 0.85em;
+}
+
+.help-btn {
+    margin-left: auto;
+    background: transparent;
+    border: 1px solid #444;
+    color: var(--text);
+    padding: 4px 10px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.85em;
+    text-decoration: none;
+}
+
+.help-btn:hover {
+    background: var(--card);
+    border-color: var(--blue);
+    color: var(--blue);
 }
 
 /* Toast messages */

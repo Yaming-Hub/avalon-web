@@ -17,7 +17,7 @@ else
             <QuestTrack State="@_state" />
         </div>
         <div class="game-main">
-            <PhaseBar State="@_state" />
+            <PhaseBar State="@_state" GameId="@GameId" PlayerId="@PlayerId" />
 
             @switch (_state.Phase)
             {
