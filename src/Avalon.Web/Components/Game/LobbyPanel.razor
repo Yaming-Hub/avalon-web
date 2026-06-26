@@ -7,12 +7,21 @@
     <ul>
         @foreach (var player in State.Players)
         {
-            <li>@player.Name @(player.IsHost ? "👑" : "")</li>
+            <li>@player.Name @(player.IsHost ? "👑" : "") @(player.IsBot ? "🤖" : "")</li>
         }
     </ul>
 
     @if (IsHost)
     {
+        <div class="btn-row" style="margin-bottom: 12px;">
+            <button class="btn btn-primary" @onclick="AddBots" disabled="@(State.Players.Count >= 10)">
+                🤖 Add Bots (@Math.Min(4, 10 - State.Players.Count))
+            </button>
+            <button class="btn btn-primary" @onclick="AddOneBot" disabled="@(State.Players.Count >= 10)">
+                🤖 +1 Bot
+            </button>
+        </div>
+
         <h3>Game Settings</h3>
         <div class="checkbox-group">
             <label class="checkbox-label">
@@ -127,6 +136,35 @@
         try
         {
             await GameService.StartGameAsync(GameId, PlayerId);
+            await OnAction.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task AddBots()
+    {
+        _error = null;
+        try
+        {
+            int count = Math.Min(4, 10 - State.Players.Count);
+            await GameService.AddBotsAsync(GameId, PlayerId, count);
+            await OnAction.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task AddOneBot()
+    {
+        _error = null;
+        try
+        {
+            await GameService.AddBotsAsync(GameId, PlayerId, 1);
             await OnAction.InvokeAsync();
         }
         catch (Exception ex)

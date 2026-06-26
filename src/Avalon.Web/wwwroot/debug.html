@@ -497,7 +497,7 @@ function renderPlayerList() {
     li.appendChild(dot);
 
     const local = players.find(lp => lp.id === p.id);
-    let text = p.name + (p.isHost ? ' 👑' : '');
+    let text = p.name + (p.isHost ? ' 👑' : '') + (p.isBot ? ' 🤖' : '');
     if (p.role) text += ` [${p.role}]`;
     if (gameState.currentLeader === p.id) text += ' 🎯';
     li.appendChild(document.createTextNode(text));
