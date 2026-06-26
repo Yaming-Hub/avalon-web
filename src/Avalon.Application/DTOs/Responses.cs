@@ -31,6 +31,7 @@ public class PlayerView
     public string Id { get; set; } = default!;
     public string Name { get; set; } = default!;
     public bool IsHost { get; set; }
+    public bool IsBot { get; set; }
     // Role and Team only visible under certain conditions
     public string? Role { get; set; }
     public string? Team { get; set; }

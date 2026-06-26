@@ -119,6 +119,7 @@
         </div>
         <div class="row" style="margin-top:4px">
           <button class="btn btn-sm btn-primary" onclick="quickAdd()">+ Quick Add 4</button>
+          <button class="btn btn-sm btn-success" onclick="addBots()">🤖 Add Bots</button>
           <button class="btn btn-sm btn-warn hidden" id="restart-btn" onclick="restartGame()">🔄 New Game</button>
         </div>
       </div>
@@ -409,6 +410,14 @@ async function assassinate() {
 async function restartGame() {
   if (!gameId) return;
   await api('POST', `${API}/${gameId}/restart`, null, players[0].id);
+  refreshState();
+}
+
+async function addBots() {
+  if (!gameId) return;
+  const need = Math.max(0, 5 - players.length); // add enough to reach 5 minimum
+  const count = Math.max(need, 4);
+  const res = await api('POST', `${API}/${gameId}/add-bots?count=${count}`, null, players[0].id);
   refreshState();
 }
 

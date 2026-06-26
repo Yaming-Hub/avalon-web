@@ -231,4 +231,22 @@ public class GamesController : ControllerBase
             return BadRequest(ex.Message);
         }
     }
+
+    [HttpPost("{id}/add-bots")]
+    public async Task<ActionResult> AddBots(string id, [FromHeader(Name = "X-Player-Id")] string playerId, [FromQuery] int count = 4)
+    {
+        try
+        {
+            var results = await _gameService.AddBotsAsync(id, playerId, count);
+            return Ok(new { added = results.Count, bots = results });
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
 }

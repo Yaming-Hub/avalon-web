@@ -33,6 +33,7 @@ builder.Services.AddSingleton<IGameRepository, InMemoryGameRepository>();
 builder.Services.AddSingleton<GameEventBus>();
 builder.Services.AddScoped<IGameNotifier, BlazorGameNotifier>();
 builder.Services.AddScoped<GameStateMapper>();
+builder.Services.AddScoped<BotService>();
 builder.Services.AddScoped<GameService>();
 
 var app = builder.Build();

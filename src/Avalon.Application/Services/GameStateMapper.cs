@@ -53,6 +53,7 @@ public class GameStateMapper
             Id = player.Id,
             Name = player.Name,
             IsHost = player.IsHost,
+            IsBot = player.IsBot,
             Role = revealRoles ? player.Role?.ToString() : null,
             Team = revealRoles ? player.Team?.ToString() : null,
         };
