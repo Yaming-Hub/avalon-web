@@ -136,6 +136,7 @@
         <label><input type="checkbox" id="set-mordred"> Mordred</label>
         <label><input type="checkbox" id="set-oberon"> Oberon</label>
         <label><input type="checkbox" id="set-lady"> Lady of the Lake</label>
+        <label><input type="checkbox" id="set-actlog" checked> 📋 Activity Log (debug)</label>
       </div>
       <div class="row" style="margin-top:8px">
         <button class="btn btn-warn btn-sm" onclick="updateSettings()">Save Settings</button>
@@ -164,6 +165,7 @@
       <div id="rejections-display" style="font-size:0.85em;color:var(--muted)"></div>
       <div id="vote-threshold-display" style="font-size:0.85em;color:var(--muted)"></div>
       <div id="result-display" class="hidden" style="margin-top:8px;font-size:1.1em;font-weight:700"></div>
+      <div id="logs-warning" class="hidden" style="margin-top:8px;padding:8px;background:#6a2d2d;border-radius:4px;font-size:0.85em;color:#e4b7b7">⚠️ Activity logs have been accessed — this game's integrity cannot be trusted.</div>
     </div>
 
     <!-- Round History -->
@@ -346,6 +348,7 @@ async function updateSettings() {
     mordredEnabled: document.getElementById('set-mordred').checked,
     oberonEnabled: document.getElementById('set-oberon').checked,
     ladyOfTheLakeEnabled: document.getElementById('set-lady').checked,
+    activityLogEnabled: document.getElementById('set-actlog').checked,
   }, host.id);
   refreshState();
 }
@@ -572,6 +575,14 @@ function renderStatus() {
   const restartBtn = document.getElementById('restart-btn');
   if (gameState.phase === 'GameOver') {
     restartBtn.classList.remove('hidden');
+  }
+
+  // Show logs accessed warning
+  const logsWarning = document.getElementById('logs-warning');
+  if (gameState.logsAccessed) {
+    logsWarning.classList.remove('hidden');
+  } else {
+    logsWarning.classList.add('hidden');
   }
 }
 

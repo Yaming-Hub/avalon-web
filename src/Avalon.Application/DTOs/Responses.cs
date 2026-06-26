@@ -24,6 +24,9 @@ public class GameStateResponse
 
     // Contextual help text for the current phase
     public string? HelpText { get; set; }
+
+    // Indicates logs have been accessed — game integrity is compromised
+    public bool LogsAccessed { get; set; }
 }
 
 public class PlayerView
@@ -46,6 +49,7 @@ public class GameSettingsView
     public bool MordredEnabled { get; set; }
     public bool OberonEnabled { get; set; }
     public bool LadyOfTheLakeEnabled { get; set; }
+    public bool ActivityLogEnabled { get; set; }
 }
 
 public class RoundView

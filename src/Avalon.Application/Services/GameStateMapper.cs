@@ -28,6 +28,7 @@ public class GameStateMapper
             Rounds = game.Rounds.Select(r => MapRound(r, isGameOver, game.Players)).ToList(),
             VotesRequiredToApprove = gameStarted ? (game.Players.Count / 2) + 1 : null,
             HelpText = GetHelpText(game, player),
+            LogsAccessed = game.LogsAccessed,
         };
 
         if (player != null && gameStarted)
@@ -68,6 +69,7 @@ public class GameStateMapper
         MordredEnabled = settings.MordredEnabled,
         OberonEnabled = settings.OberonEnabled,
         LadyOfTheLakeEnabled = settings.LadyOfTheLakeEnabled,
+        ActivityLogEnabled = settings.ActivityLogEnabled,
     };
 
     private static RoundView MapRound(Round round, bool isGameOver, List<Player> allPlayers)

@@ -12,13 +12,15 @@ public class GameService
     private readonly IGameNotifier _notifier;
     private readonly GameStateMapper _mapper;
     private readonly BotService _botService;
+    private readonly IActivityLog _log;
 
-    public GameService(IGameRepository repository, IGameNotifier notifier, GameStateMapper mapper, BotService botService)
+    public GameService(IGameRepository repository, IGameNotifier notifier, GameStateMapper mapper, BotService botService, IActivityLog log)
     {
         _repository = repository;
         _notifier = notifier;
         _mapper = mapper;
         _botService = botService;
+        _log = log;
     }
 
     public async Task<CreateGameResponse> CreateGameAsync(string hostName)
@@ -28,6 +30,7 @@ public class GameService
         var host = game.Join(hostName);
 
         await _repository.SaveAsync(game);
+        _log.Log(gameId, "Game", $"Game created by '{hostName}'", new { hostId = host.Id });
         return new CreateGameResponse(gameId, host.Id, host.Id, $"/game/{gameId}");
     }
 
@@ -38,9 +41,15 @@ public class GameService
         var player = game.Join(playerName);
         await _repository.SaveAsync(game);
 
-        // Only notify if a new player was added (not a re-join)
         if (game.Players.Count > countBefore)
+        {
+            _log.Log(gameId, "Player", $"'{playerName}' joined (new)", new { playerId = player.Id });
             await _notifier.NotifyPlayerJoined(gameId, playerName);
+        }
+        else
+        {
+            _log.Log(gameId, "Player", $"'{playerName}' re-joined", new { playerId = player.Id, phase = game.Phase.ToString() });
+        }
 
         return new JoinGameResponse(player.Id, player.Id);
     }
@@ -63,33 +72,49 @@ public class GameService
             MordredEnabled = request.MordredEnabled,
             OberonEnabled = request.OberonEnabled,
             LadyOfTheLakeEnabled = request.LadyOfTheLakeEnabled,
+            ActivityLogEnabled = request.ActivityLogEnabled,
         };
         game.UpdateSettings(hostPlayerId, settings);
         await _repository.SaveAsync(game);
+        _log.Log(gameId, "Settings", "Settings updated");
     }
 
     public async Task StartGameAsync(string gameId, string hostPlayerId)
     {
         var game = await GetGameOrThrow(gameId);
+
+        // Enable/disable activity logging based on game settings
+        if (game.Settings.ActivityLogEnabled)
+            _log.EnableLogging(gameId);
+        else
+            _log.DisableLogging(gameId);
+
+        _log.Log(gameId, "Game", $"Starting game with {game.Players.Count} players", new { players = game.Players.Select(p => new { p.Id, p.Name, p.IsBot }).ToList() });
         game.Start(hostPlayerId);
         game.ProceedFromRoleReveal();
         await _repository.SaveAsync(game);
 
+        _log.Log(gameId, "Phase", $"Game started → {game.Phase}", new { leader = game.CurrentLeader?.Name, round = game.CurrentRound?.RoundNumber });
+        _log.Log(gameId, "Roles", "Roles assigned", new { roles = game.Players.Select(p => new { p.Name, Role = p.Role?.ToString(), Team = p.Team?.ToString() }).ToList() });
+
         await _notifier.NotifyGameStarted(gameId);
         await _notifier.NotifyPhaseChanged(gameId, game.Phase.ToString());
 
-        // Process any bot actions (e.g., if bot is first leader)
         await _botService.ProcessBotActionsAsync(gameId);
     }
 
     public async Task ProposeTeamAsync(string gameId, string playerId, List<string> proposedPlayerIds)
     {
         var game = await GetGameOrThrow(gameId);
+        var leaderName = game.Players.First(p => p.Id == playerId).Name;
+        _log.Log(gameId, "Action", $"'{leaderName}' proposing team", new { playerId, proposedPlayerIds, currentPhase = game.Phase.ToString() });
+
         game.ProposeTeam(playerId, proposedPlayerIds);
         await _repository.SaveAsync(game);
 
-        var leaderName = game.Players.First(p => p.Id == playerId).Name;
         var proposedNames = proposedPlayerIds.Select(id => game.Players.First(p => p.Id == id).Name).ToList();
+        _log.Log(gameId, "Phase", $"Team proposed → {game.Phase}", new { leader = leaderName, team = proposedNames });
+
         await _notifier.NotifyTeamProposed(gameId, leaderName, proposedNames);
         await _notifier.NotifyPhaseChanged(gameId, game.Phase.ToString());
 
@@ -99,7 +124,10 @@ public class GameService
     public async Task VoteOnProposalAsync(string gameId, string playerId, VoteType vote)
     {
         var game = await GetGameOrThrow(gameId);
+        var playerName = game.Players.FirstOrDefault(p => p.Id == playerId)?.Name ?? playerId;
         var previousPhase = game.Phase;
+        _log.Log(gameId, "Action", $"'{playerName}' voting {vote} on proposal", new { playerId, vote = vote.ToString(), currentPhase = game.Phase.ToString() });
+
         game.VoteOnProposal(playerId, vote);
         await _repository.SaveAsync(game);
 
@@ -111,6 +139,7 @@ public class GameService
                 var votes = proposal.Votes.ToDictionary(
                     kv => game.Players.First(p => p.Id == kv.Key).Name,
                     kv => kv.Value.ToString());
+                _log.Log(gameId, "Phase", $"Proposal {(proposal.IsApproved.Value ? "APPROVED" : "REJECTED")} → {game.Phase}", new { votes, consecutiveRejections = game.ConsecutiveRejections });
                 await _notifier.NotifyVoteRevealed(gameId, votes);
             }
             await _notifier.NotifyPhaseChanged(gameId, game.Phase.ToString());
@@ -122,13 +151,17 @@ public class GameService
     public async Task VoteOnQuestAsync(string gameId, string playerId, QuestVote vote)
     {
         var game = await GetGameOrThrow(gameId);
+        var playerName = game.Players.FirstOrDefault(p => p.Id == playerId)?.Name ?? playerId;
         var previousPhase = game.Phase;
+        _log.Log(gameId, "Action", $"'{playerName}' quest-voting {vote}", new { playerId, vote = vote.ToString(), currentPhase = game.Phase.ToString() });
+
         game.VoteOnQuest(playerId, vote);
         await _repository.SaveAsync(game);
 
         if (game.Phase != previousPhase)
         {
             var quest = game.CurrentRound!.Quest!;
+            _log.Log(gameId, "Phase", $"Quest resolved ({quest.SuccessCount}✓ {quest.FailCount}✗) → {game.Phase}", new { success = quest.IsSuccess });
             await _notifier.NotifyQuestResult(gameId, quest.SuccessCount, quest.FailCount);
             await _notifier.NotifyPhaseChanged(gameId, game.Phase.ToString());
         }
@@ -139,8 +172,12 @@ public class GameService
     public async Task ProceedFromQuestResultAsync(string gameId)
     {
         var game = await GetGameOrThrow(gameId);
+        _log.Log(gameId, "Action", "Proceed from quest result requested", new { currentPhase = game.Phase.ToString(), round = game.CurrentRound?.RoundNumber });
+
         game.ProceedFromQuestResult();
         await _repository.SaveAsync(game);
+
+        _log.Log(gameId, "Phase", $"Proceeded → {game.Phase}", new { goodWins = game.CompletedQuestsGood, evilWins = game.CompletedQuestsEvil });
 
         await _notifier.NotifyPhaseChanged(gameId, game.Phase.ToString());
 
@@ -153,8 +190,12 @@ public class GameService
     public async Task<string> InvestigateWithLadyAsync(string gameId, string investigatorId, string targetId)
     {
         var game = await GetGameOrThrow(gameId);
+        _log.Log(gameId, "Action", "Lady of the Lake investigation", new { investigatorId, targetId });
+
         var team = game.InvestigateWithLady(investigatorId, targetId);
         await _repository.SaveAsync(game);
+
+        _log.Log(gameId, "Phase", $"Lady investigation complete → {game.Phase}", new { result = team.ToString() });
 
         var investigator = game.Players.First(p => p.Id == investigatorId);
         if (investigator.ConnectionId != null)
@@ -169,9 +210,12 @@ public class GameService
     public async Task AssassinateAsync(string gameId, string assassinPlayerId, string targetPlayerId)
     {
         var game = await GetGameOrThrow(gameId);
+        _log.Log(gameId, "Action", "Assassination attempt", new { assassinPlayerId, targetPlayerId });
+
         game.Assassinate(assassinPlayerId, targetPlayerId);
         await _repository.SaveAsync(game);
 
+        _log.Log(gameId, "Phase", $"Game over: {game.Result}", new { target = game.AssassinTargetId });
         await _notifier.NotifyGameOver(gameId, game.Result!.ToString()!);
     }
 
@@ -182,6 +226,17 @@ public class GameService
         await _repository.SaveAsync(game);
 
         await _notifier.NotifyPhaseChanged(gameId, game.Phase.ToString());
+    }
+
+    public async Task MarkLogsAccessedAsync(string gameId)
+    {
+        var game = await GetGameOrThrow(gameId);
+        if (!game.LogsAccessed)
+        {
+            game.MarkLogsAccessed();
+            await _repository.SaveAsync(game);
+            _log.Log(gameId, "Security", "⚠️ Activity logs accessed — game integrity compromised");
+        }
     }
 
     public async Task<List<JoinGameResponse>> AddBotsAsync(string gameId, string hostPlayerId, int count)

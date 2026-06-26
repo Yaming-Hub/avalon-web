@@ -17,12 +17,14 @@ public class BotService
 {
     private readonly IGameRepository _repository;
     private readonly IGameNotifier _notifier;
+    private readonly IActivityLog _log;
     private readonly Random _random = new();
 
-    public BotService(IGameRepository repository, IGameNotifier notifier)
+    public BotService(IGameRepository repository, IGameNotifier notifier, IActivityLog log)
     {
         _repository = repository;
         _notifier = notifier;
+        _log = log;
     }
 
     /// <summary>
@@ -31,19 +33,23 @@ public class BotService
     /// </summary>
     public async Task ProcessBotActionsAsync(string gameId)
     {
-        // Loop because bot actions may trigger phase changes that require more bot actions
-        int maxIterations = 20; // safety limit
+        int maxIterations = 20;
         for (int i = 0; i < maxIterations; i++)
         {
             var game = await _repository.GetByIdAsync(gameId);
             if (game == null || game.Phase == GamePhase.GameOver || game.Phase == GamePhase.Lobby)
                 return;
 
+            _log.Log(gameId, "Bot", $"Processing bot actions (iteration {i + 1}, phase={game.Phase})");
             bool actionTaken = await ProcessOneRound(game);
             if (!actionTaken)
+            {
+                _log.Log(gameId, "Bot", "No bot actions needed");
                 return;
+            }
 
             await _repository.SaveAsync(game);
+            _log.Log(gameId, "Bot", $"Bot action completed, new phase={game.Phase}");
         }
     }
 
