@@ -50,6 +50,9 @@ public class BotService
 
             await _repository.SaveAsync(game);
             _log.Log(gameId, "Bot", $"Bot action completed, new phase={game.Phase}");
+
+            // Notify all clients so their UIs refresh
+            await _notifier.NotifyPhaseChanged(gameId, game.Phase.ToString());
         }
     }
 

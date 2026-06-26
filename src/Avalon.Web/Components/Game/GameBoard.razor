@@ -2,7 +2,17 @@
 @inject GameEventBus EventBus
 @implements IDisposable
 
-@if (_state is null)
+@if (_notFound)
+{
+    <div class="game-layout">
+        <div class="card" style="text-align:center; padding:40px;">
+            <h2>⚠️ Game Not Found</h2>
+            <p style="margin:16px 0; color:var(--muted)">This game does not exist or has been removed.</p>
+            <a class="btn btn-primary btn-lg" href="/">← Back to Home</a>
+        </div>
+    </div>
+}
+else if (_state is null)
 {
     <div class="game-layout">
         <p><em>Loading game...</em></p>
@@ -70,6 +80,7 @@ else
     [Parameter] public string PlayerId { get; set; } = default!;
 
     private GameStateResponse? _state;
+    private bool _notFound;
     private Action? _eventCallback;
 
     protected override async Task OnInitializedAsync()
@@ -90,9 +101,13 @@ else
         {
             _state = await GameService.GetGameStateAsync(GameId, PlayerId);
         }
+        catch (KeyNotFoundException)
+        {
+            _notFound = true;
+        }
         catch
         {
-            // Game may have been removed
+            // Other transient errors
         }
     }
 

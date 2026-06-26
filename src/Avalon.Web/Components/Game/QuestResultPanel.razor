@@ -51,6 +51,11 @@
             await GameService.ProceedFromQuestResultAsync(GameId);
             await OnAction.InvokeAsync();
         }
+        catch (InvalidOperationException)
+        {
+            // Bots may have already proceeded — just refresh
+            await OnAction.InvokeAsync();
+        }
         catch (Exception ex)
         {
             _error = ex.Message;
