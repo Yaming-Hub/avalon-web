@@ -1,3 +1,4 @@
+using Avalon.Domain.Configuration;
 using Avalon.Domain.Enums;
 using Avalon.Domain.Models;
 using Avalon.Application.DTOs;
@@ -10,12 +11,14 @@ public class GameService
     private readonly IGameRepository _repository;
     private readonly IGameNotifier _notifier;
     private readonly GameStateMapper _mapper;
+    private readonly BotService _botService;
 
-    public GameService(IGameRepository repository, IGameNotifier notifier, GameStateMapper mapper)
+    public GameService(IGameRepository repository, IGameNotifier notifier, GameStateMapper mapper, BotService botService)
     {
         _repository = repository;
         _notifier = notifier;
         _mapper = mapper;
+        _botService = botService;
     }
 
     public async Task<CreateGameResponse> CreateGameAsync(string hostName)
@@ -74,6 +77,9 @@ public class GameService
 
         await _notifier.NotifyGameStarted(gameId);
         await _notifier.NotifyPhaseChanged(gameId, game.Phase.ToString());
+
+        // Process any bot actions (e.g., if bot is first leader)
+        await _botService.ProcessBotActionsAsync(gameId);
     }
 
     public async Task ProposeTeamAsync(string gameId, string playerId, List<string> proposedPlayerIds)
@@ -86,6 +92,8 @@ public class GameService
         var proposedNames = proposedPlayerIds.Select(id => game.Players.First(p => p.Id == id).Name).ToList();
         await _notifier.NotifyTeamProposed(gameId, leaderName, proposedNames);
         await _notifier.NotifyPhaseChanged(gameId, game.Phase.ToString());
+
+        await _botService.ProcessBotActionsAsync(gameId);
     }
 
     public async Task VoteOnProposalAsync(string gameId, string playerId, VoteType vote)
@@ -107,6 +115,8 @@ public class GameService
             }
             await _notifier.NotifyPhaseChanged(gameId, game.Phase.ToString());
         }
+
+        await _botService.ProcessBotActionsAsync(gameId);
     }
 
     public async Task VoteOnQuestAsync(string gameId, string playerId, QuestVote vote)
@@ -122,6 +132,8 @@ public class GameService
             await _notifier.NotifyQuestResult(gameId, quest.SuccessCount, quest.FailCount);
             await _notifier.NotifyPhaseChanged(gameId, game.Phase.ToString());
         }
+
+        await _botService.ProcessBotActionsAsync(gameId);
     }
 
     public async Task ProceedFromQuestResultAsync(string gameId)
@@ -134,6 +146,8 @@ public class GameService
 
         if (game.Phase == GamePhase.GameOver)
             await _notifier.NotifyGameOver(gameId, game.Result!.ToString()!);
+
+        await _botService.ProcessBotActionsAsync(gameId);
     }
 
     public async Task<string> InvestigateWithLadyAsync(string gameId, string investigatorId, string targetId)
@@ -147,6 +161,8 @@ public class GameService
             await _notifier.NotifyLadyResult(investigator.ConnectionId, team.ToString());
 
         await _notifier.NotifyPhaseChanged(gameId, game.Phase.ToString());
+
+        await _botService.ProcessBotActionsAsync(gameId);
         return team.ToString();
     }
 
@@ -166,6 +182,33 @@ public class GameService
         await _repository.SaveAsync(game);
 
         await _notifier.NotifyPhaseChanged(gameId, game.Phase.ToString());
+    }
+
+    public async Task<List<JoinGameResponse>> AddBotsAsync(string gameId, string hostPlayerId, int count)
+    {
+        var game = await GetGameOrThrow(gameId);
+        var host = game.Players.FirstOrDefault(p => p.Id == hostPlayerId);
+        if (host == null || !host.IsHost)
+            throw new InvalidOperationException("Only the host can add bots.");
+
+        var botNames = new[] { "Bot_Alpha", "Bot_Beta", "Bot_Gamma", "Bot_Delta", "Bot_Epsilon", "Bot_Zeta", "Bot_Eta", "Bot_Theta", "Bot_Iota" };
+        var results = new List<JoinGameResponse>();
+
+        int added = 0;
+        foreach (var name in botNames)
+        {
+            if (added >= count) break;
+            if (game.Players.Any(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase))) continue;
+            if (game.Players.Count >= GameConfiguration.MaxPlayers) break;
+
+            var bot = game.AddBot(name);
+            results.Add(new JoinGameResponse(bot.Id, bot.Id));
+            await _notifier.NotifyPlayerJoined(gameId, bot.Name);
+            added++;
+        }
+
+        await _repository.SaveAsync(game);
+        return results;
     }
 
     private async Task<Game> GetGameOrThrow(string gameId)

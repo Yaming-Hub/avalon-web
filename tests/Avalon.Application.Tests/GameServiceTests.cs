@@ -22,7 +22,8 @@ public class GameServiceTests
         _repository = new InMemoryGameRepository();
         _notifierMock = new Mock<IGameNotifier>();
         _mapper = new GameStateMapper();
-        _service = new GameService(_repository, _notifierMock.Object, _mapper);
+        var botService = new BotService(_repository, _notifierMock.Object);
+        _service = new GameService(_repository, _notifierMock.Object, _mapper, botService);
     }
 
     [TestMethod]

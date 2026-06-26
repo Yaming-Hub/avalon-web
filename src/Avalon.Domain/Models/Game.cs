@@ -69,6 +69,24 @@ public class Game
         }
     }
 
+    public Player AddBot(string botName)
+    {
+        lock (_lock)
+        {
+            EnsurePhase(GamePhase.Lobby);
+
+            if (Players.Count >= GameConfiguration.MaxPlayers)
+                throw new InvalidOperationException($"Game is full (max {GameConfiguration.MaxPlayers} players).");
+
+            if (Players.Any(p => p.Name.Equals(botName, StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidOperationException($"A player named '{botName}' already exists.");
+
+            var bot = new Player(Guid.NewGuid().ToString(), botName, isHost: false, isBot: true);
+            Players.Add(bot);
+            return bot;
+        }
+    }
+
     public void UpdateSettings(string hostPlayerId, GameSettings newSettings)
     {
         lock (_lock)
