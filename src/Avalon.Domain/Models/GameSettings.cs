@@ -11,6 +11,7 @@ public class GameSettings
     public bool MordredEnabled { get; set; }
     public bool OberonEnabled { get; set; }
     public bool LadyOfTheLakeEnabled { get; set; }
+    public bool ActivityLogEnabled { get; set; }
 
     public List<Role> GetEnabledSpecialRoles()
     {

@@ -15,6 +15,7 @@ public class Game
     public LadyOfTheLake? LadyOfTheLake { get; private set; }
     public GameResult? Result { get; private set; }
     public string? AssassinTargetId { get; private set; }
+    public bool LogsAccessed { get; private set; }
     public DateTime CreatedAt { get; }
 
     private readonly object _lock = new();
@@ -314,6 +315,11 @@ public class Game
                 player.Team = null;
             }
         }
+    }
+
+    public void MarkLogsAccessed()
+    {
+        LogsAccessed = true;
     }
 
     // --- Assassination ---

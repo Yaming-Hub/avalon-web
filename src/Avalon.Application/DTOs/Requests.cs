@@ -15,7 +15,8 @@ public record UpdateSettingsRequest(
     bool MorganaEnabled,
     bool MordredEnabled,
     bool OberonEnabled,
-    bool LadyOfTheLakeEnabled);
+    bool LadyOfTheLakeEnabled,
+    bool ActivityLogEnabled = false);
 
 public record ProposeTeamRequest(List<string> PlayerIds);
 

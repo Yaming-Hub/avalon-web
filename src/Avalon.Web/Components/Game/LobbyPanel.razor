@@ -45,6 +45,9 @@
             <label class="checkbox-label">
                 <input type="checkbox" @bind="_ladyOfTheLakeEnabled" /> Lady of the Lake
             </label>
+            <label class="checkbox-label">
+                <input type="checkbox" @bind="_activityLogEnabled" /> 📋 Activity Log (debug — players will be notified)
+            </label>
         </div>
 
         <div class="btn-row">
@@ -84,6 +87,7 @@
     private bool _mordredEnabled;
     private bool _oberonEnabled;
     private bool _ladyOfTheLakeEnabled;
+    private bool _activityLogEnabled;
     private string? _error;
     private bool _initialized;
 
@@ -98,6 +102,7 @@
             _mordredEnabled = State.Settings.MordredEnabled;
             _oberonEnabled = State.Settings.OberonEnabled;
             _ladyOfTheLakeEnabled = State.Settings.LadyOfTheLakeEnabled;
+            _activityLogEnabled = State.Settings.ActivityLogEnabled;
             _initialized = true;
         }
     }
@@ -114,7 +119,8 @@
                 MorganaEnabled: _morganaEnabled,
                 MordredEnabled: _mordredEnabled,
                 OberonEnabled: _oberonEnabled,
-                LadyOfTheLakeEnabled: _ladyOfTheLakeEnabled);
+                LadyOfTheLakeEnabled: _ladyOfTheLakeEnabled,
+                ActivityLogEnabled: _activityLogEnabled);
             await GameService.UpdateSettingsAsync(GameId, PlayerId, request);
             await OnAction.InvokeAsync();
         }

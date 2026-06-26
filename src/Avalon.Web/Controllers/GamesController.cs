@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Avalon.Application.DTOs;
+using Avalon.Application.Interfaces;
 using Avalon.Application.Services;
 using Avalon.Domain.Enums;
 
@@ -10,10 +11,12 @@ namespace Avalon.Web.Controllers;
 public class GamesController : ControllerBase
 {
     private readonly GameService _gameService;
+    private readonly IActivityLog _activityLog;
 
-    public GamesController(GameService gameService)
+    public GamesController(GameService gameService, IActivityLog activityLog)
     {
         _gameService = gameService;
+        _activityLog = activityLog;
     }
 
     [HttpPost]
@@ -248,5 +251,27 @@ public class GamesController : ControllerBase
         {
             return BadRequest(ex.Message);
         }
+    }
+
+    [HttpGet("{id}/logs")]
+    public async Task<ActionResult> GetActivityLogs(string id, [FromQuery] int? limit)
+    {
+        // Check if logging is enabled for this game
+        if (!_activityLog.IsEnabled(id))
+            return BadRequest("Activity logging is not enabled for this game.");
+
+        var logs = _activityLog.GetLogs(id, limit);
+
+        // Mark game as compromised and notify players
+        try
+        {
+            await _gameService.MarkLogsAccessedAsync(id);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+
+        return Ok(logs);
     }
 }

@@ -30,6 +30,7 @@ builder.Services.AddCors(options =>
 
 // DI registrations
 builder.Services.AddSingleton<IGameRepository, InMemoryGameRepository>();
+builder.Services.AddSingleton<IActivityLog, InMemoryActivityLog>();
 builder.Services.AddSingleton<GameEventBus>();
 builder.Services.AddScoped<IGameNotifier, BlazorGameNotifier>();
 builder.Services.AddScoped<GameStateMapper>();
@@ -38,11 +39,8 @@ builder.Services.AddScoped<GameService>();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
