@@ -39,15 +39,21 @@ public class GameService
     public async Task<JoinGameResponse> JoinGameAsync(string gameId, string playerName)
     {
         var game = await GetGameOrThrow(gameId);
-        var countBefore = game.Players.Count;
+        var playerCountBefore = game.Players.Count;
+        var observerCountBefore = game.Observers.Count;
         var player = game.Join(playerName);
         await _repository.SaveAsync(game);
 
-        if (game.Players.Count > countBefore)
+        if (game.Players.Count > playerCountBefore)
         {
             _log.Log(gameId, "Player", $"'{playerName}' joined (new)", new { playerId = player.Id });
             _chat.PostMessage(gameId, "System", $"{playerName} joined the game.", isSystem: true);
             await _notifier.NotifyPlayerJoined(gameId, playerName);
+        }
+        else if (game.Observers.Count > observerCountBefore)
+        {
+            _log.Log(gameId, "Player", $"'{playerName}' joined as observer", new { playerId = player.Id, phase = game.Phase.ToString() });
+            _chat.PostMessage(gameId, "System", $"👁️ {playerName} joined as an observer.", isSystem: true);
         }
         else
         {
@@ -164,7 +170,7 @@ public class GameService
             }
 
             if (game.Phase == GamePhase.GameOver)
-                _chat.PostMessage(gameId, "System", "💀 5 consecutive rejections! Evil wins!", isSystem: true);
+                _chat.PostMessage(gameId, "System", "💀 5 consecutive rejections! EVIL TEAM WINS!", isSystem: true);
 
             await _notifier.NotifyPhaseChanged(gameId, game.Phase.ToString());
         }
@@ -212,13 +218,15 @@ public class GameService
 
         if (game.Phase == GamePhase.TeamProposal)
             _chat.PostMessage(gameId, "System", $"📋 Round {game.CurrentRound?.RoundNumber} begins. {game.CurrentLeader?.Name} is the leader. Team size: {game.CurrentRound?.RequiredTeamSize}", isSystem: true);
+        else if (game.Phase == GamePhase.AssassinVote)
+            _chat.PostMessage(gameId, "System", "⚔️ Good has won 3 quests! But the Assassin now has a chance to identify Merlin...", isSystem: true);
         else if (game.Phase == GamePhase.GameOver)
         {
             var resultMsg = game.Result switch
             {
-                GameResult.GoodWins => "🎉 Good wins! The forces of good have triumphed!",
-                GameResult.EvilWins => "💀 Evil wins! The forces of darkness prevail!",
-                GameResult.EvilWinsByAssassination => "🗡️ Evil wins by assassination! Merlin has been found!",
+                GameResult.GoodWins => "🎉 GOOD TEAM WINS! The forces of good have triumphed!",
+                GameResult.EvilWins => "💀 EVIL TEAM WINS! The forces of darkness prevail!",
+                GameResult.EvilWinsByAssassination => "🗡️ EVIL TEAM WINS by assassination! Merlin has been found!",
                 _ => "Game over!"
             };
             _chat.PostMessage(gameId, "System", resultMsg, isSystem: true);
@@ -265,8 +273,8 @@ public class GameService
 
         var resultMsg = game.Result switch
         {
-            GameResult.EvilWinsByAssassination => $"🗡️ The Assassin targeted {targetName} — it was Merlin! Evil wins by assassination!",
-            GameResult.GoodWins => $"🗡️ The Assassin targeted {targetName} — wrong guess! Good wins!",
+            GameResult.EvilWinsByAssassination => $"🗡️ The Assassin targeted {targetName} — it was Merlin! EVIL TEAM WINS by assassination!",
+            GameResult.GoodWins => $"🗡️ The Assassin targeted {targetName} — wrong guess! GOOD TEAM WINS!",
             _ => "Game over!"
         };
         _chat.PostMessage(gameId, "System", resultMsg, isSystem: true);

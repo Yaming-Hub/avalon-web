@@ -176,13 +176,16 @@ public class GameLogicTests
     }
 
     [TestMethod]
-    public void Join_AfterGameStarted_Throws()
+    public void Join_AfterGameStarted_NewPlayerBecomesObserver()
     {
         var game = CreateStartedGame();
 
-        var ex = Assert.ThrowsExactly<InvalidOperationException>(
-            () => game.Join("LatePlayer"));
-        StringAssert.Contains(ex.Message, "Lobby");
+        var observer = game.Join("LatePlayer");
+
+        Assert.AreEqual("LatePlayer", observer.Name);
+        Assert.AreEqual(1, game.Observers.Count);
+        Assert.AreEqual(observer.Id, game.Observers[0].Id);
+        Assert.AreEqual(5, game.Players.Count); // original players unchanged
     }
 
     [TestMethod]

@@ -701,11 +701,18 @@ function renderRoleCard(ps, ap) {
   }
 
   if (ps.visiblePlayerIds && ps.visiblePlayerIds.length > 0) {
+    const role = ps.yourRole;
+    let label, tag;
+    if (role === 'Merlin') { label = 'Known evil:'; tag = '(evil)'; }
+    else if (role === 'Percival') { label = 'Merlin or Morgana:'; tag = '(Merlin/Morgana)'; }
+    else if (['Assassin', 'Morgana', 'Mordred'].includes(role)) { label = 'Fellow evil:'; tag = '(evil)'; }
+    else { label = 'You can see:'; tag = ''; }
+
     const names = ps.visiblePlayerIds.map(id => {
       const p = gameState.players.find(x => x.id === id);
-      return p ? p.name : id;
+      return (p ? p.name : id) + ' ' + tag;
     });
-    visInfo.textContent = `You can see: ${names.join(', ')}`;
+    visInfo.textContent = `${label} ${names.join(', ')}`;
   } else {
     visInfo.textContent = '';
   }

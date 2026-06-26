@@ -29,9 +29,20 @@ public class GameStateMapper
             VotesRequiredToApprove = gameStarted ? (game.Players.Count / 2) + 1 : null,
             HelpText = GetHelpText(game, player),
             LogsAccessed = game.LogsAccessed,
+            ObserverPlayers = game.Observers.Select(p => MapPlayer(p, false)).ToList(),
         };
 
-        if (player != null && gameStarted)
+        // Check if requesting player is an observer
+        var isObserver = requestingPlayerId != null
+            && game.Observers.Any(o => o.Id == requestingPlayerId);
+        response.IsObserver = isObserver;
+
+        if (isObserver)
+        {
+            response.YourPlayerId = requestingPlayerId;
+            response.HelpText = "You are observing this game. You can watch the actions and chat, but cannot participate until the next game starts.";
+        }
+        else if (player != null && gameStarted)
         {
             response.YourPlayerId = player.Id;
             response.YourRole = player.Role?.ToString();

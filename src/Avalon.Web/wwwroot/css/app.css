@@ -258,6 +258,18 @@ input[type="text"]::placeholder { color: #555; }
 .role-team { font-size: 0.85em; margin-top: 2px; }
 .role-visible { font-size: 0.85em; color: var(--muted); margin-top: 6px; }
 
+.visible-players { font-size: 0.85em; color: var(--muted); margin-top: 6px; }
+.visible-player-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    margin: 2px 4px;
+    border-radius: 10px;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+.visible-player-tag.tag-evil { background: #4a1a1a; color: var(--red); }
+.visible-player-tag.tag-unknown { background: #1a2a4a; color: var(--blue); }
+
 /* Vote results */
 .vote-results { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .vote-chip {

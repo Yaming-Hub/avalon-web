@@ -9,6 +9,7 @@ public class Game
     public GamePhase Phase { get; private set; } = GamePhase.Lobby;
     public GameSettings Settings { get; private set; } = new();
     public List<Player> Players { get; } = new();
+    public List<Player> Observers { get; } = new();
     public List<Round> Rounds { get; } = new();
     public int CurrentLeaderIndex { get; private set; }
     public int ConsecutiveRejections { get; private set; }
@@ -45,8 +46,18 @@ public class Game
             if (existing != null)
                 return existing;
 
-            // New players can only join during the lobby phase
-            EnsurePhase(GamePhase.Lobby);
+            // Also check observers for re-join
+            var existingObserver = Observers.FirstOrDefault(p => p.Name.Equals(playerName, StringComparison.OrdinalIgnoreCase));
+            if (existingObserver != null)
+                return existingObserver;
+
+            // After game starts, new players join as observers
+            if (Phase != GamePhase.Lobby)
+            {
+                var observer = new Player(Guid.NewGuid().ToString(), playerName, isHost: false);
+                Observers.Add(observer);
+                return observer;
+            }
 
             if (Players.Count >= GameConfiguration.MaxPlayers)
                 throw new InvalidOperationException($"Game is full (max {GameConfiguration.MaxPlayers} players).");
