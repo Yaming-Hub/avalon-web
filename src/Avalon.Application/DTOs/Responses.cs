@@ -27,6 +27,10 @@ public class GameStateResponse
 
     // Indicates logs have been accessed — game integrity is compromised
     public bool LogsAccessed { get; set; }
+
+    // Observer mode — player joined after game started, can watch but not act
+    public bool IsObserver { get; set; }
+    public List<PlayerView> ObserverPlayers { get; set; } = new();
 }
 
 public class PlayerView
