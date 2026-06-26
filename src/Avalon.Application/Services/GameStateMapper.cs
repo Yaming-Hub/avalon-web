@@ -143,7 +143,7 @@ public class GameStateMapper
 
             GamePhase.TeamVote =>
                 player?.Id == game.CurrentRound?.Proposals.LastOrDefault()?.LeaderPlayerId
-                    ? "You proposed this team, so your approval is automatic. Wait for all other players to vote."
+                    ? "You proposed this team, so your approval is automatic. You can still change your vote to Reject if you change your mind. Waiting for all other players to vote."
                     : $"Vote to approve or reject the proposed team. A majority ({(game.Players.Count / 2) + 1} of {game.Players.Count}) must approve. If rejected {GameConfiguration.MaxConsecutiveRejections - game.ConsecutiveRejections} more time(s) in a row, evil wins!",
 
             GamePhase.Quest =>

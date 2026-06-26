@@ -144,6 +144,10 @@ public class Game
                 GetPlayerOrThrow(pid);
 
             var proposal = round.AddProposal(playerId, new List<string>(proposedPlayerIds));
+
+            // Leader auto-approves their own proposal (can override with Reject later)
+            proposal.CastVote(playerId, VoteType.Approve);
+
             Phase = GamePhase.TeamVote;
             return proposal;
         }
@@ -158,18 +162,10 @@ public class Game
             GetPlayerOrThrow(playerId);
 
             var proposal = CurrentRound!.Proposals[^1];
-
-            // Leader auto-approves their own proposal
-            if (playerId == proposal.LeaderPlayerId)
-                throw new InvalidOperationException("The leader does not need to vote on their own proposal.");
-
             proposal.CastVote(playerId, vote);
 
-            // +1 because the leader's approve is implicit
-            if (proposal.Votes.Count == Players.Count - 1)
+            if (proposal.Votes.Count == Players.Count)
             {
-                // Add the leader's implicit approve vote for resolution
-                proposal.CastVote(proposal.LeaderPlayerId, VoteType.Approve);
                 proposal.Resolve(Players.Count);
                 if (proposal.IsApproved == true)
                 {
