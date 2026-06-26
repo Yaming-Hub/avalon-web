@@ -76,6 +76,23 @@
   .hidden { display: none !important; }
   .copyable { cursor: pointer; text-decoration: underline dotted; }
   .copyable:hover { color: var(--blue); }
+
+  .help-box { background: #1a2a4a; border: 1px solid #2d4a7a; border-radius: 6px; padding: 10px 14px; margin-bottom: 10px; font-size: 0.82em; color: #a8c8f0; line-height: 1.5; }
+  .help-box::before { content: '💡 '; }
+
+  .vote-status { font-size: 0.8em; margin-top: 6px; }
+  .vote-status .voted { color: var(--green); }
+  .vote-status .pending { color: var(--gold); }
+
+  .btn.voted { opacity: 0.5; pointer-events: none; position: relative; }
+  .btn.voted::after { content: ' ✓ Submitted'; font-weight: normal; }
+
+  .round-history { font-size: 0.82em; }
+  .round-history .round-entry { margin-bottom: 8px; padding: 6px 8px; background: #0a0a1a; border-radius: 4px; }
+  .round-history .round-entry h4 { font-size: 0.9em; margin-bottom: 4px; color: var(--blue); }
+  .round-history .proposal-entry { margin-left: 8px; padding: 4px 0; border-bottom: 1px solid #222; }
+  .round-history .vote-approve { color: var(--green); }
+  .round-history .vote-reject { color: var(--red); }
 </style>
 </head>
 <body>
@@ -102,6 +119,7 @@
         </div>
         <div class="row" style="margin-top:4px">
           <button class="btn btn-sm btn-primary" onclick="quickAdd()">+ Quick Add 4</button>
+          <button class="btn btn-sm btn-warn hidden" id="restart-btn" onclick="restartGame()">🔄 New Game</button>
         </div>
       </div>
     </div>
@@ -143,7 +161,14 @@
       <div id="phase-display" style="margin-bottom:4px"></div>
       <div id="leader-display" style="font-size:0.85em;color:var(--muted)"></div>
       <div id="rejections-display" style="font-size:0.85em;color:var(--muted)"></div>
+      <div id="vote-threshold-display" style="font-size:0.85em;color:var(--muted)"></div>
       <div id="result-display" class="hidden" style="margin-top:8px;font-size:1.1em;font-weight:700"></div>
+    </div>
+
+    <!-- Round History -->
+    <div class="card hidden" id="history-card">
+      <h2>Round History</h2>
+      <div class="round-history" id="round-history"></div>
     </div>
   </div>
 
@@ -158,6 +183,9 @@
 
       <!-- Action panels (shown based on phase + active player) -->
       <div id="action-area" class="hidden">
+        <!-- Help text -->
+        <div class="help-box hidden" id="help-box"></div>
+
         <!-- Role info -->
         <div class="card" id="role-card">
           <h3>Your Identity</h3>
@@ -178,20 +206,22 @@
         <div class="card hidden" id="vote-card">
           <h3>Vote on Team Proposal</h3>
           <div id="proposal-info" style="font-size:0.85em;margin-bottom:8px"></div>
-          <div class="row">
-            <button class="btn btn-success" onclick="vote('Approve')">✓ Approve</button>
-            <button class="btn btn-danger" onclick="vote('Reject')">✗ Reject</button>
+          <div class="row" id="vote-buttons">
+            <button class="btn btn-success" id="approve-btn" onclick="vote('Approve')">✓ Approve</button>
+            <button class="btn btn-danger" id="reject-btn" onclick="vote('Reject')">✗ Reject</button>
           </div>
+          <div class="vote-status" id="vote-status"></div>
         </div>
 
         <!-- Quest vote -->
         <div class="card hidden" id="quest-vote-card">
           <h3>Quest Vote</h3>
           <p style="font-size:0.85em;margin-bottom:8px">You are on this quest. Choose wisely.</p>
-          <div class="row">
-            <button class="btn btn-success" onclick="questVote('Success')">⚔ Success</button>
-            <button class="btn btn-danger" id="fail-btn" onclick="questVote('Fail')">💀 Fail</button>
+          <div class="row" id="quest-vote-buttons">
+            <button class="btn btn-success" id="quest-success-btn" onclick="questVote('Success')">⚔ Success</button>
+            <button class="btn btn-danger" id="quest-fail-btn" onclick="questVote('Fail')">💀 Fail</button>
           </div>
+          <div class="vote-status" id="quest-vote-status"></div>
         </div>
 
         <!-- Quest result / proceed -->
@@ -336,12 +366,22 @@ async function proposeTeam() {
 async function vote(v) {
   const ap = activePlayer();
   await api('POST', `${API}/${gameId}/vote`, { vote: v }, ap.id);
+  // Mark buttons as voted
+  document.getElementById('approve-btn').classList.add('voted');
+  document.getElementById('reject-btn').classList.add('voted');
+  document.getElementById('approve-btn').disabled = true;
+  document.getElementById('reject-btn').disabled = true;
   refreshState();
 }
 
 async function questVote(v) {
   const ap = activePlayer();
   await api('POST', `${API}/${gameId}/quest-vote`, { vote: v }, ap.id);
+  // Mark buttons as voted
+  document.getElementById('quest-success-btn').classList.add('voted');
+  document.getElementById('quest-fail-btn').classList.add('voted');
+  document.getElementById('quest-success-btn').disabled = true;
+  document.getElementById('quest-fail-btn').disabled = true;
   refreshState();
 }
 
@@ -363,6 +403,12 @@ async function assassinate() {
   const ap = activePlayer();
   const targetId = document.getElementById('assassin-target').value;
   await api('POST', `${API}/${gameId}/assassinate`, { targetPlayerId: targetId }, ap.id);
+  refreshState();
+}
+
+async function restartGame() {
+  if (!gameId) return;
+  await api('POST', `${API}/${gameId}/restart`, null, players[0].id);
   refreshState();
 }
 
@@ -408,6 +454,7 @@ function renderAll() {
   renderPlayerList();
   renderQuestTrack();
   renderStatus();
+  renderRoundHistory();
   renderActionArea();
 }
 
@@ -492,6 +539,14 @@ function renderStatus() {
   document.getElementById('rejections-display').textContent = gameState.consecutiveRejections > 0
     ? `Consecutive rejections: ${gameState.consecutiveRejections}/5` : '';
 
+  // Show vote threshold
+  const thresholdEl = document.getElementById('vote-threshold-display');
+  if (gameState.votesRequiredToApprove) {
+    thresholdEl.textContent = `Votes to approve: ${gameState.votesRequiredToApprove} of ${gameState.players.length}`;
+  } else {
+    thresholdEl.textContent = '';
+  }
+
   const resultEl = document.getElementById('result-display');
   if (gameState.result) {
     resultEl.classList.remove('hidden');
@@ -503,6 +558,87 @@ function renderStatus() {
   } else {
     resultEl.classList.add('hidden');
   }
+
+  // Show restart button if game is over or in progress
+  const restartBtn = document.getElementById('restart-btn');
+  if (gameState.phase === 'GameOver') {
+    restartBtn.classList.remove('hidden');
+  }
+}
+
+function renderRoundHistory() {
+  const card = document.getElementById('history-card');
+  const container = document.getElementById('round-history');
+  if (!gameState.rounds || gameState.rounds.length === 0) { card.classList.add('hidden'); return; }
+  card.classList.remove('hidden');
+  container.innerHTML = '';
+
+  const getName = id => gameState.players.find(p => p.id === id)?.name || id;
+
+  gameState.rounds.forEach(round => {
+    const entry = document.createElement('div');
+    entry.className = 'round-entry';
+
+    let resultText = '';
+    if (round.isSuccess === true) resultText = ' — <span style="color:var(--green)">✓ Success</span>';
+    else if (round.isSuccess === false) resultText = ' — <span style="color:var(--red)">✗ Failed</span>';
+    else resultText = ' — <span style="color:var(--gold)">In Progress</span>';
+
+    entry.innerHTML = `<h4>Round ${round.roundNumber} (Team: ${round.requiredTeamSize}, Fails needed: ${round.failsRequired})${resultText}</h4>`;
+
+    // Show proposals
+    round.proposals.forEach((proposal, idx) => {
+      const pDiv = document.createElement('div');
+      pDiv.className = 'proposal-entry';
+
+      const leaderName = getName(proposal.leaderPlayerId);
+      const teamNames = proposal.proposedPlayerIds.map(getName).join(', ');
+      let statusHtml = '';
+      if (proposal.isApproved === true) statusHtml = '<span class="vote-approve">✓ Approved</span>';
+      else if (proposal.isApproved === false) statusHtml = '<span class="vote-reject">✗ Rejected</span>';
+      else {
+        // Show pending vote status
+        const votedNames = (proposal.votedPlayerIds || []).map(getName).join(', ');
+        const pendingNames = (proposal.pendingPlayerIds || []).map(getName).join(', ');
+        statusHtml = `<span class="voted">Voted: ${votedNames || 'none'}</span> | <span class="pending">Waiting: ${pendingNames || 'none'}</span>`;
+      }
+
+      // Show individual votes if revealed
+      let votesHtml = '';
+      if (proposal.votes) {
+        const voteEntries = Object.entries(proposal.votes).map(([pid, vote]) => {
+          const name = getName(pid);
+          const cls = vote === 'Approve' ? 'vote-approve' : 'vote-reject';
+          return `<span class="${cls}">${name}: ${vote}</span>`;
+        });
+        votesHtml = `<div style="margin-top:2px">${voteEntries.join(' · ')}</div>`;
+      }
+
+      pDiv.innerHTML = `<div>Proposal ${idx + 1}: ${leaderName} → [${teamNames}] ${statusHtml}</div>${votesHtml}`;
+      entry.appendChild(pDiv);
+    });
+
+    // Show quest results
+    if (round.quest) {
+      const questDiv = document.createElement('div');
+      questDiv.style.cssText = 'margin-left:8px; margin-top:4px; font-size:0.9em;';
+      const teamNames = round.quest.participantIds.map(getName).join(', ');
+
+      let questStatus = '';
+      if (round.quest.isSuccess === true) questStatus = `<span style="color:var(--green)">Quest Passed</span> (${round.quest.successCount}✓ ${round.quest.failCount}✗)`;
+      else if (round.quest.isSuccess === false) questStatus = `<span style="color:var(--red)">Quest Failed</span> (${round.quest.successCount}✓ ${round.quest.failCount}✗)`;
+      else {
+        const votedNames = (round.quest.votedPlayerIds || []).map(getName).join(', ');
+        const pendingNames = (round.quest.pendingPlayerIds || []).map(getName).join(', ');
+        questStatus = `<span class="voted">Voted: ${votedNames || 'none'}</span> | <span class="pending">Waiting: ${pendingNames || 'none'}</span>`;
+      }
+
+      questDiv.innerHTML = `Quest: [${teamNames}] — ${questStatus}`;
+      entry.appendChild(questDiv);
+    }
+
+    container.appendChild(entry);
+  });
 }
 
 function renderActionArea() {
@@ -513,6 +649,15 @@ function renderActionArea() {
 
   // Fetch this player's perspective
   fetchPlayerState(ap.id).then(ps => {
+    // Show help text
+    const helpBox = document.getElementById('help-box');
+    if (ps.helpText) {
+      helpBox.textContent = ps.helpText;
+      helpBox.classList.remove('hidden');
+    } else {
+      helpBox.classList.add('hidden');
+    }
+
     renderRoleCard(ps, ap);
     renderPhaseActions(ps, ap);
   });
@@ -573,27 +718,73 @@ function renderPhaseActions(ps, ap) {
   }
 
   if (phase === 'TeamVote') {
-    // Check if this player already voted
     const lastProposal = cr?.proposals[cr.proposals.length - 1];
-    const hasVoted = lastProposal?.votes && lastProposal.votes[ap.id];
-    if (!hasVoted) {
+
+    // Leader doesn't vote — show a status message instead
+    if (lastProposal?.leaderPlayerId === ap.id) {
+      const card = document.getElementById('vote-card');
+      card.classList.remove('hidden');
+      const proposed = lastProposal?.proposedPlayerIds.map(id => gameState.players.find(x => x.id === id)?.name).join(', ');
+      document.getElementById('proposal-info').textContent = `Your proposal: [${proposed}]. Your approval is automatic. Waiting for others to vote.`;
+      document.getElementById('approve-btn').classList.add('voted');
+      document.getElementById('reject-btn').classList.add('voted');
+      document.getElementById('approve-btn').disabled = true;
+      document.getElementById('reject-btn').disabled = true;
+    } else {
+      // Check if this player already voted
+      const hasVoted = lastProposal?.votedPlayerIds?.includes(ap.id);
       const card = document.getElementById('vote-card');
       card.classList.remove('hidden');
       const proposed = lastProposal?.proposedPlayerIds.map(id => gameState.players.find(x => x.id === id)?.name).join(', ');
       const leaderName = gameState.players.find(x => x.id === lastProposal?.leaderPlayerId)?.name;
       document.getElementById('proposal-info').textContent = `${leaderName} proposes: ${proposed}`;
+
+      if (hasVoted) {
+        document.getElementById('approve-btn').classList.add('voted');
+        document.getElementById('reject-btn').classList.add('voted');
+        document.getElementById('approve-btn').disabled = true;
+        document.getElementById('reject-btn').disabled = true;
+      } else {
+        document.getElementById('approve-btn').classList.remove('voted');
+        document.getElementById('reject-btn').classList.remove('voted');
+        document.getElementById('approve-btn').disabled = false;
+        document.getElementById('reject-btn').disabled = false;
+      }
     }
+
+    // Show vote status: who voted, who is waiting
+    const votedNames = (lastProposal?.votedPlayerIds || []).map(id => gameState.players.find(x => x.id === id)?.name).join(', ');
+    const pendingNames = (lastProposal?.pendingPlayerIds || []).map(id => gameState.players.find(x => x.id === id)?.name).join(', ');
+    const voteStatus = document.getElementById('vote-status');
+    voteStatus.innerHTML = `<span class="voted">Voted: ${votedNames || 'none'}</span> · <span class="pending">Waiting: ${pendingNames || 'none'}</span>`;
   }
 
   if (phase === 'Quest') {
     const quest = cr?.quest;
     const isOnQuest = quest?.participantIds.includes(ap.id);
-    const hasVoted = quest?.successCount != null; // quest resolved
-    if (isOnQuest && !hasVoted) {
+    const hasVoted = quest?.votedPlayerIds?.includes(ap.id);
+    if (isOnQuest) {
       const card = document.getElementById('quest-vote-card');
       card.classList.remove('hidden');
-      // Disable fail for good players
-      document.getElementById('fail-btn').disabled = ps.yourTeam === 'Good';
+
+      if (hasVoted) {
+        document.getElementById('quest-success-btn').classList.add('voted');
+        document.getElementById('quest-fail-btn').classList.add('voted');
+        document.getElementById('quest-success-btn').disabled = true;
+        document.getElementById('quest-fail-btn').disabled = true;
+      } else {
+        document.getElementById('quest-success-btn').classList.remove('voted');
+        document.getElementById('quest-fail-btn').classList.remove('voted');
+        document.getElementById('quest-success-btn').disabled = false;
+        // Anyone can vote Fail now
+        document.getElementById('quest-fail-btn').disabled = false;
+      }
+
+      // Show quest vote status
+      const votedNames = (quest?.votedPlayerIds || []).map(id => gameState.players.find(x => x.id === id)?.name).join(', ');
+      const pendingNames = (quest?.pendingPlayerIds || []).map(id => gameState.players.find(x => x.id === id)?.name).join(', ');
+      document.getElementById('quest-vote-status').innerHTML =
+        `<span class="voted">Voted: ${votedNames || 'none'}</span> · <span class="pending">Waiting: ${pendingNames || 'none'}</span>`;
     }
   }
 
@@ -632,7 +823,6 @@ function renderPhaseActions(ps, ap) {
       card.classList.remove('hidden');
       const select = document.getElementById('assassin-target');
       select.innerHTML = '';
-      // Target good players (from visible info or all non-evil)
       gameState.players.filter(p => p.id !== ap.id).forEach(p => {
         const opt = document.createElement('option');
         opt.value = p.id;

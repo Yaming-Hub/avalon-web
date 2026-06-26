@@ -141,14 +141,16 @@ public class GamesControllerTests
     }
 
     [TestMethod]
-    public async Task JoinGame_DuplicateName_ReturnsBadRequest()
+    public async Task JoinGame_DuplicateName_ReturnsOkWithSamePlayer()
     {
         var (gameId, _) = await CreateGameAsync();
-        await JoinGameAsync(gameId, "Bob");
+        var firstPlayerId = await JoinGameAsync(gameId, "Bob");
 
         var response = await _client.PostAsJsonAsync($"/api/games/{gameId}/join", new { PlayerName = "Bob" });
 
-        Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.AreEqual(firstPlayerId, json.GetProperty("playerId").GetString());
     }
 
     [TestMethod]
@@ -220,9 +222,10 @@ public class GamesControllerTests
             HttpMethod.Post, $"/api/games/{gameId}/propose", leaderId, new { PlayerIds = teamIds });
         Assert.AreEqual(HttpStatusCode.NoContent, proposeResponse.StatusCode);
 
-        // All players vote Approve
+        // All non-leader players vote Approve (leader auto-approves)
         foreach (var playerId in allPlayerIds)
         {
+            if (playerId == leaderId) continue;
             var voteResponse = await SendWithPlayerHeader(
                 HttpMethod.Post, $"/api/games/{gameId}/vote", playerId, new { Vote = "Approve" });
             Assert.AreEqual(HttpStatusCode.NoContent, voteResponse.StatusCode);
@@ -249,9 +252,10 @@ public class GamesControllerTests
             HttpMethod.Post, $"/api/games/{gameId}/propose", leaderId, new { PlayerIds = teamIds });
         Assert.AreEqual(HttpStatusCode.NoContent, proposeResponse.StatusCode);
 
-        // 3. All players vote Approve
+        // 3. All non-leader players vote Approve (leader auto-approves)
         foreach (var playerId in allPlayerIds)
         {
+            if (playerId == leaderId) continue;
             var voteResponse = await SendWithPlayerHeader(
                 HttpMethod.Post, $"/api/games/{gameId}/vote", playerId, new { Vote = "Approve" });
             Assert.AreEqual(HttpStatusCode.NoContent, voteResponse.StatusCode);

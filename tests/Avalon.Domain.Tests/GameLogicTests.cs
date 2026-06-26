@@ -30,14 +30,22 @@ public class GameLogicTests
 
     private static void ApproveCurrentProposal(Game game)
     {
+        var proposal = game.CurrentRound!.Proposals[^1];
         foreach (var player in game.Players)
+        {
+            if (player.Id == proposal.LeaderPlayerId) continue; // Leader auto-approves
             game.VoteOnProposal(player.Id, VoteType.Approve);
+        }
     }
 
     private static void RejectCurrentProposal(Game game)
     {
+        var proposal = game.CurrentRound!.Proposals[^1];
         foreach (var player in game.Players)
+        {
+            if (player.Id == proposal.LeaderPlayerId) continue; // Leader auto-approves
             game.VoteOnProposal(player.Id, VoteType.Reject);
+        }
     }
 
     private static void CompleteQuestAllSuccess(Game game)
@@ -197,14 +205,15 @@ public class GameLogicTests
     }
 
     [TestMethod]
-    public void Join_DuplicateName_Throws()
+    public void Join_DuplicateName_ReturnsSamePlayer()
     {
         var game = new Game("test");
-        game.Join("Alice");
+        var first = game.Join("Alice");
 
-        var ex = Assert.ThrowsExactly<InvalidOperationException>(
-            () => game.Join("Alice"));
-        StringAssert.Contains(ex.Message, "Alice");
+        var second = game.Join("Alice");
+
+        Assert.AreEqual(first.Id, second.Id);
+        Assert.AreEqual(1, game.Players.Count);
     }
 
     [TestMethod]
@@ -367,19 +376,22 @@ public class GameLogicTests
     #region Team Vote Tests
 
     [TestMethod]
-    public void VoteOnProposal_AllPlayersMustVote_ApprovedMovesToQuest()
+    public void VoteOnProposal_AllNonLeaderPlayersMustVote_ApprovedMovesToQuest()
     {
         var game = CreateStartedGame();
         ProposeCurrentTeam(game);
 
-        // Vote all but last player
-        for (int i = 0; i < game.Players.Count - 1; i++)
-            game.VoteOnProposal(game.Players[i].Id, VoteType.Approve);
+        var proposal = game.CurrentRound!.Proposals[^1];
+        var nonLeaderPlayers = game.Players.Where(p => p.Id != proposal.LeaderPlayerId).ToList();
+
+        // Vote all but last non-leader player
+        for (int i = 0; i < nonLeaderPlayers.Count - 1; i++)
+            game.VoteOnProposal(nonLeaderPlayers[i].Id, VoteType.Approve);
 
         Assert.AreEqual(GamePhase.TeamVote, game.Phase);
 
-        // Last vote resolves it
-        game.VoteOnProposal(game.Players[^1].Id, VoteType.Approve);
+        // Last non-leader vote resolves it
+        game.VoteOnProposal(nonLeaderPlayers[^1].Id, VoteType.Approve);
 
         Assert.AreEqual(GamePhase.Quest, game.Phase);
     }
@@ -390,12 +402,16 @@ public class GameLogicTests
         var game = CreateStartedGame();
         ProposeCurrentTeam(game);
 
-        // 3 approve, 2 reject → majority approves
-        int approveCount = (game.Players.Count / 2) + 1;
-        for (int i = 0; i < approveCount; i++)
-            game.VoteOnProposal(game.Players[i].Id, VoteType.Approve);
-        for (int i = approveCount; i < game.Players.Count; i++)
-            game.VoteOnProposal(game.Players[i].Id, VoteType.Reject);
+        var proposal = game.CurrentRound!.Proposals[^1];
+        var nonLeaderPlayers = game.Players.Where(p => p.Id != proposal.LeaderPlayerId).ToList();
+
+        // Leader auto-approves (1), need enough non-leader approvals for majority
+        // Total players = 5, majority = 3, leader gives 1 approve, need 2 more
+        int approveNeeded = (game.Players.Count / 2) + 1 - 1; // -1 for leader's auto-approve
+        for (int i = 0; i < approveNeeded; i++)
+            game.VoteOnProposal(nonLeaderPlayers[i].Id, VoteType.Approve);
+        for (int i = approveNeeded; i < nonLeaderPlayers.Count; i++)
+            game.VoteOnProposal(nonLeaderPlayers[i].Id, VoteType.Reject);
 
         Assert.AreEqual(GamePhase.Quest, game.Phase);
     }
@@ -451,7 +467,7 @@ public class GameLogicTests
     }
 
     [TestMethod]
-    public void VoteOnQuest_GoodPlayerVotesFail_Throws()
+    public void VoteOnQuest_GoodPlayerVotesFail_Allowed()
     {
         var game = CreateStartedGame();
         // We need a good player on the quest
@@ -474,9 +490,10 @@ public class GameLogicTests
         var goodOnQuest = game.Players.First(p =>
             p.Team == Team.Good && teamIds.Contains(p.Id));
 
-        var ex = Assert.ThrowsExactly<InvalidOperationException>(
-            () => game.VoteOnQuest(goodOnQuest.Id, QuestVote.Fail));
-        StringAssert.Contains(ex.Message, "Good");
+        // Good players can now vote Fail (no exception)
+        game.VoteOnQuest(goodOnQuest.Id, QuestVote.Fail);
+        Assert.IsTrue(game.CurrentRound!.Quest!.Votes.ContainsKey(goodOnQuest.Id));
+        Assert.AreEqual(QuestVote.Fail, game.CurrentRound!.Quest!.Votes[goodOnQuest.Id]);
     }
 
     [TestMethod]

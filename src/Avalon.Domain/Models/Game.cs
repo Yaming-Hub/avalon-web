@@ -41,11 +41,13 @@ public class Game
         {
             EnsurePhase(GamePhase.Lobby);
 
+            // Allow re-join if a player with the same name already exists
+            var existing = Players.FirstOrDefault(p => p.Name.Equals(playerName, StringComparison.OrdinalIgnoreCase));
+            if (existing != null)
+                return existing;
+
             if (Players.Count >= GameConfiguration.MaxPlayers)
                 throw new InvalidOperationException($"Game is full (max {GameConfiguration.MaxPlayers} players).");
-
-            if (Players.Any(p => p.Name.Equals(playerName, StringComparison.OrdinalIgnoreCase)))
-                throw new InvalidOperationException($"A player named '{playerName}' already exists.");
 
             bool isHost = Players.Count == 0;
             var player = new Player(Guid.NewGuid().ToString(), playerName, isHost);
@@ -155,10 +157,18 @@ public class Game
             GetPlayerOrThrow(playerId);
 
             var proposal = CurrentRound!.Proposals[^1];
+
+            // Leader auto-approves their own proposal
+            if (playerId == proposal.LeaderPlayerId)
+                throw new InvalidOperationException("The leader does not need to vote on their own proposal.");
+
             proposal.CastVote(playerId, vote);
 
-            if (proposal.Votes.Count == Players.Count)
+            // +1 because the leader's approve is implicit
+            if (proposal.Votes.Count == Players.Count - 1)
             {
+                // Add the leader's implicit approve vote for resolution
+                proposal.CastVote(proposal.LeaderPlayerId, VoteType.Approve);
                 proposal.Resolve(Players.Count);
                 if (proposal.IsApproved == true)
                 {
@@ -188,11 +198,7 @@ public class Game
         lock (_lock)
         {
             EnsurePhase(GamePhase.Quest);
-            var player = GetPlayerOrThrow(playerId);
-
-            // Good players must play success
-            if (player.Team == Team.Good && vote == QuestVote.Fail)
-                throw new InvalidOperationException("Good players must play Success.");
+            GetPlayerOrThrow(playerId);
 
             var quest = CurrentRound!.Quest!;
             quest.CastVote(playerId, vote);
@@ -267,6 +273,31 @@ public class Game
             StartNewRound();
 
             return target.Team!.Value;
+        }
+    }
+
+    // --- Restart (new game with same players) ---
+    public void Restart(string hostPlayerId)
+    {
+        lock (_lock)
+        {
+            EnsureHost(hostPlayerId);
+
+            // Reset game state but keep players
+            Phase = GamePhase.Lobby;
+            Rounds.Clear();
+            CurrentLeaderIndex = 0;
+            ConsecutiveRejections = 0;
+            LadyOfTheLake = null;
+            Result = null;
+            AssassinTargetId = null;
+
+            // Clear role assignments
+            foreach (var player in Players)
+            {
+                player.Role = null;
+                player.Team = null;
+            }
         }
     }
 

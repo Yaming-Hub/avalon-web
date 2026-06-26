@@ -159,9 +159,13 @@ public class GameServiceTests
         game = await _repository.GetByIdAsync(gameId);
         Assert.AreEqual(GamePhase.TeamVote, game!.Phase);
 
-        // All players approve
+        // All non-leader players approve (leader auto-approves)
+        var proposal = game.CurrentRound!.Proposals[^1];
         foreach (var pid in playerIds)
+        {
+            if (pid == proposal.LeaderPlayerId) continue;
             await _service.VoteOnProposalAsync(gameId, pid, VoteType.Approve);
+        }
 
         game = await _repository.GetByIdAsync(gameId);
         Assert.AreEqual(GamePhase.Quest, game!.Phase);
@@ -239,8 +243,12 @@ public class GameStateMapperTests
             var teamIds = game.Players.Take(teamSize).Select(p => p.Id).ToList();
             game.ProposeTeam(leader.Id, teamIds);
 
+            var leaderId = game.CurrentRound!.Proposals[^1].LeaderPlayerId;
             foreach (var p in game.Players)
+            {
+                if (p.Id == leaderId) continue; // Leader auto-approves
                 game.VoteOnProposal(p.Id, VoteType.Reject);
+            }
         }
 
         return game;

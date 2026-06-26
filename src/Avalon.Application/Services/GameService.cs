@@ -31,10 +31,14 @@ public class GameService
     public async Task<JoinGameResponse> JoinGameAsync(string gameId, string playerName)
     {
         var game = await GetGameOrThrow(gameId);
+        var countBefore = game.Players.Count;
         var player = game.Join(playerName);
         await _repository.SaveAsync(game);
 
-        await _notifier.NotifyPlayerJoined(gameId, playerName);
+        // Only notify if a new player was added (not a re-join)
+        if (game.Players.Count > countBefore)
+            await _notifier.NotifyPlayerJoined(gameId, playerName);
+
         return new JoinGameResponse(player.Id, player.Id);
     }
 
@@ -153,6 +157,15 @@ public class GameService
         await _repository.SaveAsync(game);
 
         await _notifier.NotifyGameOver(gameId, game.Result!.ToString()!);
+    }
+
+    public async Task RestartGameAsync(string gameId, string hostPlayerId)
+    {
+        var game = await GetGameOrThrow(gameId);
+        game.Restart(hostPlayerId);
+        await _repository.SaveAsync(game);
+
+        await _notifier.NotifyPhaseChanged(gameId, game.Phase.ToString());
     }
 
     private async Task<Game> GetGameOrThrow(string gameId)

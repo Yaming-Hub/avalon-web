@@ -18,6 +18,12 @@ public class GameStateResponse
     public string? YourTeam { get; set; }
     public List<string>? VisiblePlayerIds { get; set; }
     public string? AssassinTarget { get; set; }
+
+    // Vote threshold info
+    public int? VotesRequiredToApprove { get; set; }
+
+    // Contextual help text for the current phase
+    public string? HelpText { get; set; }
 }
 
 public class PlayerView
@@ -57,6 +63,9 @@ public class ProposalView
     public List<string> ProposedPlayerIds { get; set; } = new();
     public Dictionary<string, string>? Votes { get; set; }
     public bool? IsApproved { get; set; }
+    // Track who has voted and who is still pending
+    public List<string>? VotedPlayerIds { get; set; }
+    public List<string>? PendingPlayerIds { get; set; }
 }
 
 public class QuestView
@@ -65,7 +74,9 @@ public class QuestView
     public int? SuccessCount { get; set; }
     public int? FailCount { get; set; }
     public bool? IsSuccess { get; set; }
-    // Individual votes are never revealed (only counts)
+    // Track who has voted and who is still pending (no individual votes revealed)
+    public List<string>? VotedPlayerIds { get; set; }
+    public List<string>? PendingPlayerIds { get; set; }
 }
 
 public class LadyOfTheLakeView
