@@ -22,15 +22,10 @@
                         ⚔ Success
                     </button>
                     <button class="btn btn-danger btn-lg"
-                            @onclick="() => Vote(QuestVote.Fail)"
-                            disabled="@(State.YourTeam == "Good")">
+                            @onclick="() => Vote(QuestVote.Fail)">
                         💀 Fail
                     </button>
                 </div>
-                @if (State.YourTeam == "Good")
-                {
-                    <p><em>As a loyal servant of Arthur, you must play Success.</em></p>
-                }
             }
         }
         else
