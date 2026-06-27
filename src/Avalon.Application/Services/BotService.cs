@@ -131,28 +131,34 @@ public class BotService
             if (player.Id == proposal.LeaderPlayerId) continue;
             if (proposal.Votes.ContainsKey(player.Id)) continue;
 
+            var personality = BotPersonality.GetForBot(player.Name);
             VoteType vote;
+
             if (player.Team == Team.Evil)
             {
-                // Evil bot: approve teams that include evil members, reject clean teams
+                // Evil bot: approve teams with evil members, reject clean teams
                 bool hasEvil = proposal.ProposedPlayerIds
                     .Any(id => game.Players.First(p => p.Id == id).Team == Team.Evil);
                 vote = hasEvil ? VoteType.Approve : VoteType.Reject;
-                // Occasionally approve clean teams to avoid suspicion
-                if (!hasEvil && _random.NextDouble() < 0.25)
+                // Boldness determines how often they approve clean teams to hide
+                if (!hasEvil && _random.NextDouble() < (1.0 - personality.Boldness) * 0.4)
                     vote = VoteType.Approve;
             }
             else
             {
-                // Good bot: reject teams with players who were on failed quests
+                // Good bot: use suspicion + personality
                 var suspicion = _intelligence.CalculateSuspicionScores(game, player);
                 double teamSuspicion = proposal.ProposedPlayerIds
                     .Sum(id => suspicion.GetValueOrDefault(id, 0.0));
                 double avgSuspicion = teamSuspicion / proposal.ProposedPlayerIds.Count;
-                vote = avgSuspicion > 1.5 ? VoteType.Reject : VoteType.Approve;
-                // Add randomness to avoid being too predictable
-                if (vote == VoteType.Reject && _random.NextDouble() < 0.15)
-                    vote = VoteType.Approve;
+
+                // Threshold scaled by analytical trait and aggressiveness
+                double threshold = 2.0 - personality.Aggressiveness * 1.5; // aggressive: lower threshold
+                vote = avgSuspicion * personality.Analytical > threshold ? VoteType.Reject : VoteType.Approve;
+
+                // Randomness can flip the vote
+                if (_random.NextDouble() < personality.Randomness * 0.2)
+                    vote = vote == VoteType.Approve ? VoteType.Reject : VoteType.Approve;
             }
 
             game.VoteOnProposal(player.Id, vote);
@@ -187,7 +193,31 @@ public class BotService
             var player = game.Players.First(p => p.Id == pid);
             if (!player.IsBot) continue;
 
-            var vote = player.Team == Team.Evil ? QuestVote.Fail : QuestVote.Success;
+            var personality = BotPersonality.GetForBot(player.Name);
+            QuestVote vote;
+
+            if (player.Team == Team.Evil)
+            {
+                // Evil bot: use Deceptiveness to decide whether to pass
+                // Higher deceptiveness = more likely to vote Success to avoid detection
+                int evilOnQuest = quest.ParticipantIds
+                    .Count(id => game.Players.First(p => p.Id == id).Team == Team.Evil);
+
+                // Strategically pass in early rounds or when multiple evil present
+                bool earlyGame = game.Rounds.Count <= 2;
+                double passChance = personality.Deceptiveness * (earlyGame ? 0.6 : 0.3);
+                if (evilOnQuest >= 2) passChance += 0.2; // one can cover for the other
+
+                vote = _random.NextDouble() < passChance ? QuestVote.Success : QuestVote.Fail;
+            }
+            else
+            {
+                // Good bot: normally vote Success, but Chaotic personality may rarely Fail
+                // (e.g., to confuse evil about who's on their team, or test a theory)
+                double failChance = personality.Randomness * 0.05; // very rare, max 3%
+                vote = _random.NextDouble() < failChance ? QuestVote.Fail : QuestVote.Success;
+            }
+
             game.VoteOnQuest(pid, vote);
             anyVoted = true;
         }
