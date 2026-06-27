@@ -137,6 +137,7 @@
         <label><input type="checkbox" id="set-oberon"> Oberon</label>
         <label><input type="checkbox" id="set-lady"> Lady of the Lake</label>
         <label><input type="checkbox" id="set-actlog" checked> 📋 Activity Log (debug)</label>
+        <label>🤖 Bot Evil Bias: <input type="number" id="set-botbias" min="0" max="1" step="0.25" value="0" style="width:60px"></label>
       </div>
       <div class="row" style="margin-top:8px">
         <button class="btn btn-warn btn-sm" onclick="updateSettings()">Save Settings</button>
@@ -349,6 +350,7 @@ async function updateSettings() {
     oberonEnabled: document.getElementById('set-oberon').checked,
     ladyOfTheLakeEnabled: document.getElementById('set-lady').checked,
     activityLogEnabled: document.getElementById('set-actlog').checked,
+    botEvilBias: parseFloat(document.getElementById('set-botbias').value) || 0,
   }, host.id);
   refreshState();
 }

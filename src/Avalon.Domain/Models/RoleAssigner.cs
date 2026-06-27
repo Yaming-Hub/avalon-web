@@ -24,16 +24,75 @@ public class RoleAssigner
             throw new InvalidOperationException($"Too many evil special roles ({evilSpecial}) for {evilCount} evil players.");
 
         var roles = BuildRoleList(goodCount, evilCount, settings);
-        var shuffledRoles = roles.OrderBy(_ => _random.Next()).ToList();
 
-        var shuffledPlayers = players.OrderBy(_ => _random.Next()).ToList();
+        double bias = Math.Clamp(settings.BotEvilBias, 0.0, 1.0);
+        bool anyBots = players.Any(p => p.IsBot);
 
-        for (int i = 0; i < shuffledPlayers.Count; i++)
+        if (bias <= 0.0 || !anyBots)
         {
-            var (role, team) = shuffledRoles[i];
-            shuffledPlayers[i].Role = role;
-            shuffledPlayers[i].Team = team;
+            // Unbiased: fully random assignment (original behavior).
+            var shuffledRoles = roles.OrderBy(_ => _random.Next()).ToList();
+            var shuffledPlayers = players.OrderBy(_ => _random.Next()).ToList();
+            for (int i = 0; i < shuffledPlayers.Count; i++)
+            {
+                var (role, team) = shuffledRoles[i];
+                shuffledPlayers[i].Role = role;
+                shuffledPlayers[i].Team = team;
+            }
+            return;
         }
+
+        AssignWithBotEvilBias(players, roles, bias);
+    }
+
+    /// <summary>
+    /// Steers bot players toward Evil minion roles with the given probability,
+    /// and never assigns Merlin to a bot (unless every player is a bot and no
+    /// non-Merlin role remains). Remaining roles go to humans randomly.
+    /// </summary>
+    private void AssignWithBotEvilBias(List<Player> players, List<(Role Role, Team Team)> roles, double bias)
+    {
+        var evilRoles = roles.Where(r => r.Team == Team.Evil).OrderBy(_ => _random.Next()).ToList();
+        var goodRoles = roles.Where(r => r.Team == Team.Good).OrderBy(_ => _random.Next()).ToList();
+
+        var bots = players.Where(p => p.IsBot).OrderBy(_ => _random.Next()).ToList();
+        var humans = players.Where(p => !p.IsBot).OrderBy(_ => _random.Next()).ToList();
+
+        foreach (var bot in bots)
+        {
+            bool wantEvil = evilRoles.Count > 0 && _random.NextDouble() < bias;
+
+            if (wantEvil)
+            {
+                Assign(bot, evilRoles, 0);
+                continue;
+            }
+
+            // Otherwise assign a NON-Merlin good role if one is available.
+            int nonMerlinIdx = goodRoles.FindIndex(r => r.Role != Role.Merlin);
+            if (nonMerlinIdx >= 0)
+                Assign(bot, goodRoles, nonMerlinIdx);
+            else if (evilRoles.Count > 0)
+                Assign(bot, evilRoles, 0);
+            else
+                Assign(bot, goodRoles, 0); // only Merlin left (all-bot game)
+        }
+
+        // Whatever is left goes to the humans, randomly.
+        var remaining = evilRoles.Concat(goodRoles).OrderBy(_ => _random.Next()).ToList();
+        for (int i = 0; i < humans.Count; i++)
+        {
+            humans[i].Role = remaining[i].Role;
+            humans[i].Team = remaining[i].Team;
+        }
+    }
+
+    private static void Assign(Player player, List<(Role Role, Team Team)> pool, int index)
+    {
+        var (role, team) = pool[index];
+        pool.RemoveAt(index);
+        player.Role = role;
+        player.Team = team;
     }
 
     private static List<(Role Role, Team Team)> BuildRoleList(int goodCount, int evilCount, GameSettings settings)

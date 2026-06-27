@@ -81,6 +81,7 @@ public class GameStateMapper
         OberonEnabled = settings.OberonEnabled,
         LadyOfTheLakeEnabled = settings.LadyOfTheLakeEnabled,
         ActivityLogEnabled = settings.ActivityLogEnabled,
+        BotEvilBias = settings.BotEvilBias,
     };
 
     private static RoundView MapRound(Round round, bool isGameOver, List<Player> allPlayers)

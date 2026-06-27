@@ -82,6 +82,7 @@ public class GameService
             OberonEnabled = request.OberonEnabled,
             LadyOfTheLakeEnabled = request.LadyOfTheLakeEnabled,
             ActivityLogEnabled = request.ActivityLogEnabled,
+            BotEvilBias = request.BotEvilBias,
         };
         game.UpdateSettings(hostPlayerId, settings);
         await _repository.SaveAsync(game);
