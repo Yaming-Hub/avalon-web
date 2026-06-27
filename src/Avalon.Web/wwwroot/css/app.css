@@ -105,6 +105,9 @@ main { flex: 1; }
     border-right: 1px solid #333;
     padding: 16px;
     vertical-align: top;
+    height: calc(100vh - 49px);
+    overflow-y: auto;
+}
 }
 
 .game-main-cell {
