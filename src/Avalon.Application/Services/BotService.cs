@@ -124,6 +124,26 @@ public class BotService
     {
         var proposal = game.CurrentRound!.Proposals[^1];
         bool anyVoted = false;
+        bool isEarlyGame = game.Rounds.Count <= 2;
+
+        // Pre-calculate: how many evil bots are about to reject this proposal?
+        // Evil bots coordinate to avoid multiple rejections in early rounds
+        int evilBotsWantingToReject = 0;
+        if (isEarlyGame)
+        {
+            bool hasEvil = proposal.ProposedPlayerIds
+                .Any(id => game.Players.First(p => p.Id == id).Team == Team.Evil);
+            if (!hasEvil)
+            {
+                evilBotsWantingToReject = game.Players
+                    .Count(p => p.IsBot && p.Team == Team.Evil
+                        && p.Id != proposal.LeaderPlayerId
+                        && !proposal.Votes.ContainsKey(p.Id));
+            }
+        }
+
+        int evilRejectionsAllowed = isEarlyGame ? 1 : 99; // early game: max 1 evil rejects
+        int evilRejectionsSoFar = 0;
 
         foreach (var player in game.Players)
         {
@@ -136,13 +156,28 @@ public class BotService
 
             if (player.Team == Team.Evil)
             {
-                // Evil bot: approve teams with evil members, reject clean teams
                 bool hasEvil = proposal.ProposedPlayerIds
                     .Any(id => game.Players.First(p => p.Id == id).Team == Team.Evil);
                 vote = hasEvil ? VoteType.Approve : VoteType.Reject;
-                // Boldness determines how often they approve clean teams to hide
-                if (!hasEvil && _random.NextDouble() < (1.0 - personality.Boldness) * 0.4)
-                    vote = VoteType.Approve;
+
+                // Early game stealth: evil bots mostly approve to avoid detection
+                if (isEarlyGame && !hasEvil)
+                {
+                    // Only allow one evil bot to reject; others must approve to blend in
+                    if (evilRejectionsSoFar >= evilRejectionsAllowed)
+                        vote = VoteType.Approve;
+                    else if (_random.NextDouble() < personality.Deceptiveness * 0.7)
+                        vote = VoteType.Approve; // deceptive evil bots approve to blend
+                    
+                    if (vote == VoteType.Reject)
+                        evilRejectionsSoFar++;
+                }
+                else if (!isEarlyGame && !hasEvil)
+                {
+                    // Later game: boldness controls rejection frequency
+                    if (_random.NextDouble() < (1.0 - personality.Boldness) * 0.4)
+                        vote = VoteType.Approve;
+                }
             }
             else
             {
@@ -152,8 +187,10 @@ public class BotService
                     .Sum(id => suspicion.GetValueOrDefault(id, 0.0));
                 double avgSuspicion = teamSuspicion / proposal.ProposedPlayerIds.Count;
 
-                // Threshold scaled by analytical trait and aggressiveness
-                double threshold = 2.0 - personality.Aggressiveness * 1.5; // aggressive: lower threshold
+                // Early game: good bots are more trusting (less data available)
+                double threshold = 2.0 - personality.Aggressiveness * 1.5;
+                if (isEarlyGame) threshold += 1.0; // higher bar to reject early
+
                 vote = avgSuspicion * personality.Analytical > threshold ? VoteType.Reject : VoteType.Approve;
 
                 // Randomness can flip the vote

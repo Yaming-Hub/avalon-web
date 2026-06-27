@@ -420,9 +420,16 @@ input[type="text"]::placeholder { color: #555; }
 }
 
 .conversation-panel h3 {
-    margin-bottom: 8px;
+    margin-bottom: 0;
     font-size: 0.95em;
     color: var(--blue);
+}
+
+.chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
 }
 
 .chat-messages {

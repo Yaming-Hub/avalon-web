@@ -27,7 +27,7 @@ else
             <QuestTrack State="@_state" />
         </div>
         <div class="game-main">
-            <PhaseBar State="@_state" GameId="@GameId" PlayerId="@PlayerId" />
+            <PhaseBar State="@_state" />
 
             @if (_state.IsObserver)
             {
@@ -80,7 +80,7 @@ else
                 }
             }
 
-            <ConversationPanel GameId="@GameId" PlayerId="@PlayerId" />
+            <ConversationPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" />
         </div>
     </div>
 }
