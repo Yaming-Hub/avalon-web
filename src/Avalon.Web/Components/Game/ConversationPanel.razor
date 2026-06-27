@@ -1,4 +1,5 @@
 @inject GameService GameService
+@inject IJSRuntime JS
 @implements IDisposable
 
 <div class="conversation-panel">
@@ -33,11 +34,25 @@
     private int _lastMessageId;
     private Timer? _pollTimer;
     private ElementReference _messagesContainer;
+    private bool _shouldScroll;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadMessages();
         _pollTimer = new Timer(async _ => await PollMessages(), null, 2000, 2000);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_shouldScroll || firstRender)
+        {
+            _shouldScroll = false;
+            try
+            {
+                await JS.InvokeVoidAsync("scrollChatToBottom", _messagesContainer);
+            }
+            catch { }
+        }
     }
 
     private async Task LoadMessages()
@@ -47,6 +62,7 @@
             _messages = GameService.GetChatMessages(GameId);
             if (_messages.Count > 0)
                 _lastMessageId = _messages[^1].Id;
+            _shouldScroll = true;
         }
         catch { }
     }
@@ -60,6 +76,7 @@
             {
                 _messages.AddRange(newMessages);
                 _lastMessageId = newMessages[^1].Id;
+                _shouldScroll = true;
                 await InvokeAsync(StateHasChanged);
             }
         }
