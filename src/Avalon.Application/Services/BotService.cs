@@ -19,14 +19,16 @@ public class BotService
     private readonly IGameNotifier _notifier;
     private readonly IActivityLog _log;
     private readonly IConversationService _chat;
+    private readonly BotIntelligence _intelligence;
     private readonly Random _random = new();
 
-    public BotService(IGameRepository repository, IGameNotifier notifier, IActivityLog log, IConversationService chat)
+    public BotService(IGameRepository repository, IGameNotifier notifier, IActivityLog log, IConversationService chat, BotIntelligence intelligence)
     {
         _repository = repository;
         _notifier = notifier;
         _log = log;
         _chat = chat;
+        _intelligence = intelligence;
     }
 
     /// <summary>
@@ -79,10 +81,42 @@ public class BotService
         if (leader == null || !leader.IsBot)
             return false;
 
-        // Bot leader picks random team
         int teamSize = game.CurrentRound!.RequiredTeamSize;
-        var candidates = game.Players.OrderBy(_ => _random.Next()).Take(teamSize).Select(p => p.Id).ToList();
-        game.ProposeTeam(leader.Id, candidates);
+        List<string> teamIds;
+
+        if (leader.Team == Team.Good)
+        {
+            // Good bot leader: include self + least suspicious others
+            var suspicion = _intelligence.CalculateSuspicionScores(game, leader);
+            var others = game.Players
+                .Where(p => p.Id != leader.Id)
+                .OrderBy(p => suspicion.GetValueOrDefault(p.Id, 0.0))
+                .Take(teamSize - 1)
+                .Select(p => p.Id)
+                .ToList();
+            teamIds = new List<string> { leader.Id };
+            teamIds.AddRange(others);
+        }
+        else
+        {
+            // Evil bot leader: include self (evil) + fill with good players to look normal
+            var goodPlayers = game.Players
+                .Where(p => p.Id != leader.Id && p.Team == Team.Good)
+                .OrderBy(_ => _random.Next())
+                .Take(teamSize - 1)
+                .Select(p => p.Id)
+                .ToList();
+            teamIds = new List<string> { leader.Id };
+            teamIds.AddRange(goodPlayers);
+            // Fill remaining if needed
+            while (teamIds.Count < teamSize)
+            {
+                var extra = game.Players.First(p => !teamIds.Contains(p.Id));
+                teamIds.Add(extra.Id);
+            }
+        }
+
+        game.ProposeTeam(leader.Id, teamIds);
         return true;
     }
 
@@ -94,10 +128,34 @@ public class BotService
         foreach (var player in game.Players)
         {
             if (!player.IsBot) continue;
-            if (player.Id == proposal.LeaderPlayerId) continue; // leader auto-approved
+            if (player.Id == proposal.LeaderPlayerId) continue;
             if (proposal.Votes.ContainsKey(player.Id)) continue;
 
-            game.VoteOnProposal(player.Id, VoteType.Approve);
+            VoteType vote;
+            if (player.Team == Team.Evil)
+            {
+                // Evil bot: approve teams that include evil members, reject clean teams
+                bool hasEvil = proposal.ProposedPlayerIds
+                    .Any(id => game.Players.First(p => p.Id == id).Team == Team.Evil);
+                vote = hasEvil ? VoteType.Approve : VoteType.Reject;
+                // Occasionally approve clean teams to avoid suspicion
+                if (!hasEvil && _random.NextDouble() < 0.25)
+                    vote = VoteType.Approve;
+            }
+            else
+            {
+                // Good bot: reject teams with players who were on failed quests
+                var suspicion = _intelligence.CalculateSuspicionScores(game, player);
+                double teamSuspicion = proposal.ProposedPlayerIds
+                    .Sum(id => suspicion.GetValueOrDefault(id, 0.0));
+                double avgSuspicion = teamSuspicion / proposal.ProposedPlayerIds.Count;
+                vote = avgSuspicion > 1.5 ? VoteType.Reject : VoteType.Approve;
+                // Add randomness to avoid being too predictable
+                if (vote == VoteType.Reject && _random.NextDouble() < 0.15)
+                    vote = VoteType.Approve;
+            }
+
+            game.VoteOnProposal(player.Id, vote);
             anyVoted = true;
         }
 
@@ -202,12 +260,31 @@ public class BotService
         var assassin = game.Players.FirstOrDefault(p => p.Role == Role.Assassin);
         if (assassin == null || !assassin.IsBot) return false;
 
-        // Pick a random good player (not the assassin themselves)
-        var goodTargets = game.Players.Where(p => p.Team == Team.Good).ToList();
-        if (goodTargets.Count == 0) return false;
+        // Use Merlin detection to pick the most likely Merlin
+        var merlinScores = _intelligence.CalculateMerlinScores(game, assassin);
+        Player target;
 
-        var target = goodTargets[_random.Next(goodTargets.Count)];
+        if (merlinScores.Count > 0)
+        {
+            var targetId = merlinScores.OrderByDescending(kv => kv.Value).First().Key;
+            target = game.Players.First(p => p.Id == targetId);
+        }
+        else
+        {
+            var goodTargets = game.Players.Where(p => p.Team == Team.Good).ToList();
+            if (goodTargets.Count == 0) return false;
+            target = goodTargets[_random.Next(goodTargets.Count)];
+        }
+
         game.Assassinate(assassin.Id, target.Id);
+
+        var resultMsg = game.Result switch
+        {
+            GameResult.EvilWinsByAssassination => $"🗡️ The Assassin targeted {target.Name} — it was Merlin! EVIL TEAM WINS by assassination!",
+            GameResult.GoodWins => $"🗡️ The Assassin targeted {target.Name} — wrong guess! GOOD TEAM WINS!",
+            _ => "Game over!"
+        };
+        _chat.PostMessage(game.Id, "System", resultMsg, isSystem: true);
         return true;
     }
 }

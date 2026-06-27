@@ -32,6 +32,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddSingleton<IGameRepository, InMemoryGameRepository>();
 builder.Services.AddSingleton<IActivityLog, InMemoryActivityLog>();
 builder.Services.AddSingleton<IConversationService, InMemoryConversationService>();
+builder.Services.AddSingleton<BotIntelligence>();
 builder.Services.AddSingleton<GameEventBus>();
 builder.Services.AddScoped<IGameNotifier, BlazorGameNotifier>();
 builder.Services.AddScoped<GameStateMapper>();

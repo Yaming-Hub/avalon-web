@@ -127,11 +127,12 @@ main { flex: 1; }
 .btn-sm { padding: 6px 14px; font-size: 0.8em; }
 .btn-block { width: 100%; }
 
-.btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
 
 .card p { margin-bottom: 8px; }
 .card .checkbox-group { margin-bottom: 12px; }
 .card .checkbox-label { display: block; padding: 4px 0; }
+.card > .btn, .card > .btn-row, .card > a.btn { margin-top: 16px; }
 
 /* Inputs */
 input[type="text"], select {
