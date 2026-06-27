@@ -82,7 +82,7 @@ main { flex: 1; }
     padding: 16px;
 }
 
-.card + .card { margin-top: 0; }
+.card + .card { margin-top: 12px; }
 
 .card h2 {
     font-size: 0.85em;
@@ -127,7 +127,11 @@ main { flex: 1; }
 .btn-sm { padding: 6px 14px; font-size: 0.8em; }
 .btn-block { width: 100%; }
 
-.btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+
+.card p { margin-bottom: 8px; }
+.card .checkbox-group { margin-bottom: 12px; }
+.card .checkbox-label { display: block; padding: 4px 0; }
 
 /* Inputs */
 input[type="text"], select {
@@ -197,6 +201,8 @@ input[type="text"]::placeholder { color: #555; }
 .dot-unknown { background: #444; }
 
 .player-tag { font-size: 0.75em; color: var(--muted); }
+.player-tag-evil { font-size: 0.75em; color: var(--red); font-weight: 600; }
+.player-tag-observer { font-size: 0.75em; color: var(--muted); font-style: italic; }
 .leader-badge { color: var(--gold); font-size: 0.85em; }
 .host-badge { font-size: 0.85em; }
 

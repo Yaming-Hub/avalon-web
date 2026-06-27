@@ -319,6 +319,14 @@ public class Game
             Result = null;
             AssassinTargetId = null;
 
+            // Promote observers to players (they can play in the next game)
+            foreach (var observer in Observers)
+            {
+                if (Players.Count < GameConfiguration.MaxPlayers)
+                    Players.Add(observer);
+            }
+            Observers.Clear();
+
             // Clear role assignments
             foreach (var player in Players)
             {
