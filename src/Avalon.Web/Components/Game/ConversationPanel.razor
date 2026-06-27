@@ -2,10 +2,12 @@
 @implements IDisposable
 
 <div class="card conversation-panel">
-    <div class="chat-header">
-        <h3>💬 Chat</h3>
-        <button class="btn btn-sm help-btn" @onclick="ShowHelp" title="What should I do?">❓ Help</button>
-    </div>
+    <table style="width:100%; border:none; border-collapse:collapse; margin-bottom:8px;">
+        <tr>
+            <td style="padding:0;"><h3 style="margin:0; font-size:0.95em; color:var(--blue);">💬 Chat</h3></td>
+            <td style="padding:0; text-align:right;"><button class="btn btn-sm help-btn" @onclick="ShowHelp" title="What should I do?">❓ Help</button></td>
+        </tr>
+    </table>
     <div class="chat-messages" @ref="_messagesContainer">
         @foreach (var msg in _messages)
         {
