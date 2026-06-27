@@ -109,7 +109,6 @@ main { flex: 1; }
     height: calc(100vh - 49px);
     overflow-y: auto;
 }
-}
 
 .game-main-cell {
     vertical-align: top;
