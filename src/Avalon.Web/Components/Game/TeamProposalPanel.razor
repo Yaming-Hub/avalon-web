@@ -5,25 +5,36 @@
 
     @if (IsLeader)
     {
-        <p>Select @_currentRound?.RequiredTeamSize players for the quest:</p>
-
-        <div class="player-select">
-            @foreach (var player in State.Players)
-            {
-                <span class="player-chip @(IsSelected(player.Id) ? "selected" : "")"
-                      @onclick="() => TogglePlayer(player.Id)">
-                    @player.Name
-                </span>
-            }
-        </div>
-
-        <p>Selected: @_selectedPlayerIds.Count / @_currentRound?.RequiredTeamSize</p>
-
-        <button class="btn btn-primary btn-lg btn-block"
-                @onclick="SubmitProposal"
-                disabled="@(_selectedPlayerIds.Count != _currentRound?.RequiredTeamSize)">
-            Submit Proposal
-        </button>
+        <table style="width:100%; border:none; border-collapse:collapse;">
+            <tr>
+                <td style="padding:8px 0;">Select @_currentRound?.RequiredTeamSize players for the quest:</td>
+            </tr>
+            <tr>
+                <td style="padding:8px 0;">
+                    <div class="player-select">
+                        @foreach (var player in State.Players)
+                        {
+                            <span class="player-chip @(IsSelected(player.Id) ? "selected" : "")"
+                                  @onclick="() => TogglePlayer(player.Id)">
+                                @player.Name
+                            </span>
+                        }
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding:8px 0;">Selected: @_selectedPlayerIds.Count / @_currentRound?.RequiredTeamSize</td>
+            </tr>
+            <tr>
+                <td style="padding:16px 0 0 0;">
+                    <button class="btn btn-primary btn-lg btn-block"
+                            @onclick="SubmitProposal"
+                            disabled="@(_selectedPlayerIds.Count != _currentRound?.RequiredTeamSize)">
+                        Submit Proposal
+                    </button>
+                </td>
+            </tr>
+        </table>
     }
     else
     {

@@ -22,69 +22,71 @@ else
 {
     <table class="game-layout-table">
         <tr>
-            <td class="game-sidebar-cell" rowspan="2">
+            <td class="game-sidebar-cell">
                 <RoleCard State="@_state" />
                 <PlayerList State="@_state" />
                 <QuestTrack State="@_state" />
             </td>
-            <td class="game-action-cell">
-                <PhaseBar State="@_state" />
+            <td class="game-main-cell">
+                <div class="game-main-content">
+                    <div class="game-action-area">
+                        <PhaseBar State="@_state" />
 
-                @if (_state.IsObserver)
-                {
-                    <div class="card" style="background:#1a2a4a; border:1px solid #2d4a7a;">
-                        <h3>👁️ Observer Mode</h3>
-                        <p style="color:var(--muted)">You joined after the game started. You can watch the game progress and chat with players, but cannot take actions until the next game.</p>
+                        @if (_state.IsObserver)
+                        {
+                            <div class="card" style="background:#1a2a4a; border:1px solid #2d4a7a;">
+                                <h3>👁️ Observer Mode</h3>
+                                <p style="color:var(--muted)">You joined after the game started. You can watch the game progress and chat with players, but cannot take actions until the next game.</p>
+                            </div>
+                        }
+                        else
+                        {
+                            @switch (_state.Phase)
+                            {
+                                case "Lobby":
+                                    <LobbyPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                                    break;
+
+                                case "TeamProposal":
+                                    <TeamProposalPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                                    break;
+
+                                case "TeamVote":
+                                    <VotePanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                                    break;
+
+                                case "Quest":
+                                    <QuestVotePanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                                    break;
+
+                                case "QuestResult":
+                                    <QuestResultPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                                    break;
+
+                                case "AssassinVote":
+                                    <AssassinPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                                    break;
+
+                                case "LadyOfTheLake":
+                                    <LadyOfTheLakePanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                                    break;
+
+                                case "GameOver":
+                                    <GameOverPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                                    break;
+
+                                default:
+                                <div class="card">
+                                    <p>Phase: @_state.Phase</p>
+                                </div>
+                                break;
+                            }
+                        }
                     </div>
-                }
-                else
-                {
-                    @switch (_state.Phase)
-                    {
-                        case "Lobby":
-                            <LobbyPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
-                            break;
-
-                        case "TeamProposal":
-                            <TeamProposalPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
-                            break;
-
-                        case "TeamVote":
-                            <VotePanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
-                            break;
-
-                        case "Quest":
-                            <QuestVotePanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
-                            break;
-
-                        case "QuestResult":
-                            <QuestResultPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
-                            break;
-
-                        case "AssassinVote":
-                            <AssassinPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
-                            break;
-
-                        case "LadyOfTheLake":
-                            <LadyOfTheLakePanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
-                            break;
-
-                        case "GameOver":
-                            <GameOverPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
-                            break;
-
-                        default:
-                        <div class="card">
-                            <p>Phase: @_state.Phase</p>
-                        </div>
-                        break;
-                    }
-                }
-            </td>
-        </tr>
-        <tr>
-            <td class="game-chat-cell">
-                <ConversationPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" />
+                    <div class="game-chat-area">
+                        <ConversationPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" />
+                    </div>
+                </div>
             </td>
         </tr>
     </table>

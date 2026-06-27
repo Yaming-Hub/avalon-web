@@ -16,16 +16,21 @@
             }
             else
             {
-                <p><strong>You are on this quest!</strong></p>
-                <div class="btn-row">
-                    <button class="btn btn-success btn-lg" @onclick="() => Vote(QuestVote.Success)">
-                        ⚔ Success
-                    </button>
-                    <button class="btn btn-danger btn-lg"
-                            @onclick="() => Vote(QuestVote.Fail)">
-                        💀 Fail
-                    </button>
-                </div>
+                <table style="width:100%; border:none; border-collapse:collapse;">
+                    <tr>
+                        <td style="padding:8px 0;"><strong>You are on this quest!</strong></td>
+                    </tr>
+                    <tr>
+                        <td style="padding:16px 0 0 0;">
+                            <button class="btn btn-success btn-lg" @onclick="() => Vote(QuestVote.Success)" style="margin-right:10px;">
+                                ⚔ Success
+                            </button>
+                            <button class="btn btn-danger btn-lg" @onclick="() => Vote(QuestVote.Fail)">
+                                💀 Fail
+                            </button>
+                        </td>
+                    </tr>
+                </table>
             }
         }
         else
@@ -35,13 +40,21 @@
                 <p>Waiting for quest members to vote...</p>
             </div>
 
-            <p><strong>Quest members:</strong></p>
-            <div class="player-select">
-                @foreach (var id in _quest.ParticipantIds)
-                {
-                    <span class="player-chip selected">@GetPlayerName(id)</span>
-                }
-            </div>
+            <table style="width:100%; border:none; border-collapse:collapse;">
+                <tr>
+                    <td style="padding:8px 0;"><strong>Quest members:</strong></td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 0;">
+                        <div class="player-select">
+                            @foreach (var id in _quest.ParticipantIds)
+                            {
+                                <span class="player-chip selected">@GetPlayerName(id)</span>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            </table>
         }
     }
 
