@@ -178,6 +178,10 @@ public class BotService
                     if (_random.NextDouble() < (1.0 - personality.Boldness) * 0.4)
                         vote = VoteType.Approve;
                 }
+
+                // Random flip: even evil bots sometimes deviate to look human
+                if (_random.NextDouble() < personality.Randomness * 0.15)
+                    vote = vote == VoteType.Approve ? VoteType.Reject : VoteType.Approve;
             }
             else
             {
@@ -193,8 +197,8 @@ public class BotService
 
                 vote = avgSuspicion * personality.Analytical > threshold ? VoteType.Reject : VoteType.Approve;
 
-                // Randomness can flip the vote
-                if (_random.NextDouble() < personality.Randomness * 0.2)
+                // Random flip: adds human-like unpredictability
+                if (_random.NextDouble() < personality.Randomness * 0.25)
                     vote = vote == VoteType.Approve ? VoteType.Reject : VoteType.Approve;
             }
 
