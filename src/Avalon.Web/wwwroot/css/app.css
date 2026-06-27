@@ -135,6 +135,7 @@ main { flex: 1; }
     padding: 0 24px 16px 24px;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 /* Cards */
@@ -481,6 +482,7 @@ input[type="text"]::placeholder { color: #555; }
     flex-direction: column;
     min-height: 0;
     overflow: hidden;
+    height: 100%;
 }
 
 .chat-messages {
@@ -492,6 +494,7 @@ input[type="text"]::placeholder { color: #555; }
     border: 1px solid #333;
     margin-bottom: 8px;
     min-height: 0;
+    height: 0;
 }
 
 .chat-message {
