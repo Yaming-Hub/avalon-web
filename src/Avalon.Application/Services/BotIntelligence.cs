@@ -18,13 +18,26 @@ public class BotIntelligence
     /// Higher score = more likely to be evil (from good bot's perspective)
     /// or more likely to be Merlin (from evil bot's perspective).
     /// </summary>
-    public Dictionary<string, double> CalculateSuspicionScores(Game game, Player bot)
+    public Dictionary<string, double> CalculateSuspicionScores(Game game, Player bot, bool useSecretKnowledge = true)
     {
         var scores = new Dictionary<string, double>();
         foreach (var player in game.Players)
         {
             if (player.Id == bot.Id) continue;
             scores[player.Id] = 0.0;
+        }
+
+        // Role-based secret knowledge: Merlin sees all evil (except Mordred).
+        // Only applied when explicitly requested (e.g. when proposing a team),
+        // NOT when voting — voting on every evil team would expose Merlin to the
+        // assassin, who analyzes voting patterns to find her.
+        if (useSecretKnowledge && bot.Role == Role.Merlin)
+        {
+            foreach (var knownEvilId in game.GetVisiblePlayerIds(bot.Id))
+            {
+                if (scores.ContainsKey(knownEvilId))
+                    scores[knownEvilId] += 100.0;
+            }
         }
 
         // Analyze completed rounds
@@ -207,7 +220,10 @@ public class BotIntelligence
                 if (pid == bot.Id) continue;
                 if (!scores.ContainsKey(pid)) continue;
 
-                // Each fail makes quest participants more suspicious
+                // Each fail makes quest participants more suspicious. Kept moderate:
+                // over-weighting causes good bots to reject too many teams (hitting
+                // the 5-rejection auto-loss) and to wrongly suspect innocent good
+                // players who merely shared a failed quest with the saboteur.
                 scores[pid] += (double)failCount / round.Quest.ParticipantIds.Count * 3.0;
             }
         }
