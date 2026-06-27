@@ -2,7 +2,10 @@
 @implements IDisposable
 
 <div class="card conversation-panel">
-    <h3>💬 Chat</h3>
+    <div class="chat-header">
+        <h3>💬 Chat</h3>
+        <button class="btn btn-sm help-btn" @onclick="ShowHelp" title="What should I do?">❓ Help</button>
+    </div>
     <div class="chat-messages" @ref="_messagesContainer">
         @foreach (var msg in _messages)
         {
@@ -21,6 +24,7 @@
 @code {
     [Parameter] public string GameId { get; set; } = default!;
     [Parameter] public string PlayerId { get; set; } = default!;
+    [Parameter] public GameStateResponse? State { get; set; }
 
     private List<ConversationMessage> _messages = new();
     private string _inputMessage = "";
@@ -77,6 +81,19 @@
     {
         if (e.Key == "Enter")
             await SendMessage();
+    }
+
+    private async Task ShowHelp()
+    {
+        if (State?.HelpText is not null)
+        {
+            try
+            {
+                await GameService.PostChatMessageAsync(GameId, PlayerId, $"[Help] {State.HelpText}");
+                await PollMessages();
+            }
+            catch { }
+        }
     }
 
     public void Dispose()
