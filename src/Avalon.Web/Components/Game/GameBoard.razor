@@ -20,78 +20,62 @@ else if (_state is null)
 }
 else
 {
-    <!-- Outer table: 1 row, 2 columns (sidebar | panel holder) -->
-    <table class="layout-outer">
-        <tr>
-            <td class="layout-sidebar">
-                <div class="sidebar-content">
-                    <RoleCard State="@_state" />
-                    <PlayerList State="@_state" />
-                    <QuestTrack State="@_state" />
-                </div>
-            </td>
-            <td class="layout-panels">
-                <!-- Inner table: 2 rows (action panel | conversation panel) -->
-                <table class="layout-inner">
-                    <tr>
-                        <td class="layout-action">
-                            <div class="action-scroll">
-                                <PhaseBar State="@_state" />
+    <div class="game-root">
+        <div class="game-sidebar">
+            <RoleCard State="@_state" />
+            <PlayerList State="@_state" />
+            <QuestTrack State="@_state" />
+        </div>
+        <div class="game-panels">
+            <div class="panel-action">
+                <PhaseBar State="@_state" />
 
-                                @if (_state.IsObserver)
-                                {
-                                    <div class="card" style="background:#1a2a4a; border:1px solid #2d4a7a;">
-                                        <h3>👁️ Observer Mode</h3>
-                                        <p style="color:var(--muted)">You joined after the game started. You can watch the game progress and chat with players, but cannot take actions until the next game.</p>
-                                    </div>
-                                }
-                                else
-                                {
-                                    @switch (_state.Phase)
-                                    {
-                                        case "Lobby":
-                                            <LobbyPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
-                                            break;
-                                        case "TeamProposal":
-                                            <TeamProposalPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
-                                            break;
-                                        case "TeamVote":
-                                            <VotePanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
-                                            break;
-                                        case "Quest":
-                                            <QuestVotePanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
-                                            break;
-                                        case "QuestResult":
-                                            <QuestResultPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
-                                            break;
-                                        case "AssassinVote":
-                                            <AssassinPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
-                                            break;
-                                        case "LadyOfTheLake":
-                                            <LadyOfTheLakePanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
-                                            break;
-                                        case "GameOver":
-                                            <GameOverPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
-                                            break;
-                                        default:
-                                            <div class="card"><p>Phase: @_state.Phase</p></div>
-                                            break;
-                                    }
-                                }
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="layout-chat">
-                            <div class="layout-chat-inner">
-                                <ConversationPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" />
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
+                @if (_state.IsObserver)
+                {
+                    <div class="card" style="background:#1a2a4a; border:1px solid #2d4a7a;">
+                        <h3>👁️ Observer Mode</h3>
+                        <p style="color:var(--muted)">You joined after the game started. You can watch the game progress and chat with players, but cannot take actions until the next game.</p>
+                    </div>
+                }
+                else
+                {
+                    @switch (_state.Phase)
+                    {
+                        case "Lobby":
+                            <LobbyPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                            break;
+                        case "TeamProposal":
+                            <TeamProposalPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                            break;
+                        case "TeamVote":
+                            <VotePanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                            break;
+                        case "Quest":
+                            <QuestVotePanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                            break;
+                        case "QuestResult":
+                            <QuestResultPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                            break;
+                        case "AssassinVote":
+                            <AssassinPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                            break;
+                        case "LadyOfTheLake":
+                            <LadyOfTheLakePanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                            break;
+                        case "GameOver":
+                            <GameOverPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" OnAction="@RefreshState" />
+                            break;
+                        default:
+                            <div class="card"><p>Phase: @_state.Phase</p></div>
+                            break;
+                    }
+                }
+            </div>
+            <div class="panel-chat">
+                <ConversationPanel GameId="@GameId" PlayerId="@PlayerId" State="@_state" />
+            </div>
+        </div>
+    </div>
 }
 
 @code {

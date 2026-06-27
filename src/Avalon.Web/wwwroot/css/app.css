@@ -23,7 +23,7 @@ body {
 }
 
 /* App shell */
-.app-shell { min-height: 100vh; display: flex; flex-direction: column; }
+.app-shell { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
 .app-header {
     background: var(--surface);
@@ -33,6 +33,7 @@ body {
     align-items: center;
     justify-content: space-between;
     width: 100%;
+    flex-shrink: 0;
 }
 
 .logo {
@@ -57,7 +58,7 @@ body {
     color: var(--blue);
 }
 
-main { flex: 1; }
+main { flex: 1; min-height: 0; overflow: auto; }
 
 /* Layout helpers */
 .page-center {
@@ -66,76 +67,63 @@ main { flex: 1; }
     padding: 40px 20px;
 }
 
-/* Nested table layout */
-.layout-outer {
-    width: 100%;
-    height: calc(100vh - 49px);
-    border-collapse: collapse;
-    table-layout: fixed;
+/* Game layout — fixed-height flexbox chain (min-height:0 is critical) */
+.game-layout {
+    padding: 40px;
+    text-align: center;
 }
 
-.layout-sidebar {
-    width: 300px;
-    min-width: 250px;
-    max-width: 350px;
-    background: var(--surface);
-    border-right: 1px solid #333;
-    vertical-align: top;
-    padding: 0;
-}
-
-.sidebar-content {
-    height: calc(100vh - 49px);
-    overflow-y: auto;
-    padding: 16px;
-}
-
-.layout-panels {
-    vertical-align: top;
-    padding: 0;
-}
-
-.layout-inner {
-    width: 100%;
-    height: calc(100vh - 49px);
-    border-collapse: collapse;
-    table-layout: fixed;
-}
-
-.layout-action {
-    height: 60%;
-    vertical-align: top;
-    padding: 0;
-}
-
-.action-scroll {
+.game-root {
     height: 100%;
-    overflow-y: auto;
-    padding: 24px;
-}
-
-.layout-chat {
-    height: 40%;
-    vertical-align: top;
-    padding: 0;
-    border-top: 1px solid #333;
-    position: relative;
-}
-
-.layout-chat-inner {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    padding: 8px 24px 16px 24px;
     display: flex;
-    flex-direction: column;
     overflow: hidden;
 }
 
-.conversation-panel {
+.game-sidebar {
+    width: 300px;
+    min-width: 250px;
+    max-width: 350px;
+    flex-shrink: 0;
     height: 100%;
+    overflow-y: auto;
+    background: var(--surface);
+    border-right: 1px solid #333;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.game-panels {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.panel-action {
+    flex: 6 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.panel-chat {
+    flex: 4 1 0;
+    min-height: 0;
+    border-top: 1px solid #333;
+    padding: 12px 24px 16px 24px;
+    display: flex;
+    flex-direction: column;
+}
+
+.conversation-panel {
+    flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -143,8 +131,8 @@ main { flex: 1; }
 
 .chat-messages {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
-    height: 0;
     padding: 8px;
     background: #0a0a1a;
     border-radius: var(--radius);
@@ -458,8 +446,8 @@ input[type="text"]::placeholder { color: #555; }
 
 /* Responsive */
 @media (max-width: 768px) {
-    .game-layout { flex-direction: column; height: auto; }
-    .game-sidebar { width: 100%; min-width: auto; border-right: none; border-bottom: 1px solid #333; }
+    .game-root { flex-direction: column; }
+    .game-sidebar { width: 100%; max-width: none; min-width: auto; height: auto; max-height: 35%; border-right: none; border-bottom: 1px solid #333; }
     .page-center { padding: 24px 16px; }
     .reveal-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
 }
@@ -521,6 +509,7 @@ input[type="text"]::placeholder { color: #555; }
 .chat-input-row {
     display: flex;
     gap: 8px;
+    flex-shrink: 0;
 }
 
 .chat-input {
