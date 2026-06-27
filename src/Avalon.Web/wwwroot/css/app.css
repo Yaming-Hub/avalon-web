@@ -167,7 +167,7 @@ input[type="text"]::placeholder { color: #555; }
 }
 
 /* Player selection (for team proposals) */
-.player-select { display: flex; flex-wrap: wrap; gap: 8px; }
+.player-select { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
 .player-chip {
     padding: 8px 16px;
     background: #0a0a1a;

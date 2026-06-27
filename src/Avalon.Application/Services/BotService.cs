@@ -18,13 +18,15 @@ public class BotService
     private readonly IGameRepository _repository;
     private readonly IGameNotifier _notifier;
     private readonly IActivityLog _log;
+    private readonly IConversationService _chat;
     private readonly Random _random = new();
 
-    public BotService(IGameRepository repository, IGameNotifier notifier, IActivityLog log)
+    public BotService(IGameRepository repository, IGameNotifier notifier, IActivityLog log, IConversationService chat)
     {
         _repository = repository;
         _notifier = notifier;
         _log = log;
+        _chat = chat;
     }
 
     /// <summary>
@@ -128,6 +130,23 @@ public class BotService
             return false;
 
         game.ProceedFromQuestResult();
+
+        // Post chat messages for the transition
+        if (game.Phase == GamePhase.TeamProposal)
+            _chat.PostMessage(game.Id, "System", $"📋 Round {game.CurrentRound?.RoundNumber} begins. {game.CurrentLeader?.Name} is the leader. Team size: {game.CurrentRound?.RequiredTeamSize}", isSystem: true);
+        else if (game.Phase == GamePhase.AssassinVote)
+            _chat.PostMessage(game.Id, "System", "⚔️ Good has won 3 quests! But the Assassin now has a chance to identify Merlin...", isSystem: true);
+        else if (game.Phase == GamePhase.GameOver)
+        {
+            var resultMsg = game.Result switch
+            {
+                GameResult.GoodWins => "🎉 GOOD TEAM WINS! The forces of good have triumphed!",
+                GameResult.EvilWins => "💀 EVIL TEAM WINS! The forces of darkness prevail!",
+                _ => "Game over!"
+            };
+            _chat.PostMessage(game.Id, "System", resultMsg, isSystem: true);
+        }
+
         return true;
     }
 
