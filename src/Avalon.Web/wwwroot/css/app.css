@@ -49,6 +49,7 @@ body {
     padding: 6px 12px;
     border: 1px solid #444;
     border-radius: var(--radius);
+    margin-left: auto;
 }
 
 .header-link:hover {
@@ -123,15 +124,18 @@ main { flex: 1; }
 }
 
 .game-action-area {
-    flex: 1;
+    flex: 6;
     overflow-y: auto;
     padding: 24px;
+    min-height: 0;
 }
 
 .game-chat-area {
-    flex-shrink: 0;
-    height: 280px;
+    flex: 4;
+    min-height: 0;
     padding: 0 24px 16px 24px;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Cards */
@@ -473,25 +477,22 @@ input[type="text"]::placeholder { color: #555; }
 
 /* Conversation Panel */
 .conversation-panel {
-    margin-top: 12px;
+    flex: 1;
     display: flex;
     flex-direction: column;
-    max-height: 300px;
-}
-
-.conversation-panel {
-    margin-top: 12px;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .chat-messages {
     flex: 1;
     overflow-y: auto;
-    max-height: 200px;
     padding: 8px;
     background: #0a0a1a;
     border-radius: var(--radius);
     border: 1px solid #333;
     margin-bottom: 8px;
+    min-height: 0;
 }
 
 .chat-message {
