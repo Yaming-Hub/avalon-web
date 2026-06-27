@@ -132,7 +132,8 @@ main { flex: 1; }
 .card p { margin-bottom: 8px; }
 .card .checkbox-group { margin-bottom: 12px; }
 .card .checkbox-label { display: block; padding: 4px 0; }
-.card > .btn, .card > .btn-row, .card > a.btn { margin-top: 16px; }
+.card .btn-row { margin-top: 16px; }
+.card > .btn, .card > a.btn { margin-top: 16px; }
 
 /* Inputs */
 input[type="text"], select {
@@ -168,7 +169,7 @@ input[type="text"]::placeholder { color: #555; }
 }
 
 /* Player selection (for team proposals) */
-.player-select { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.player-select { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 16px 0; }
 .player-chip {
     padding: 8px 16px;
     background: #0a0a1a;
@@ -430,6 +431,14 @@ input[type="text"]::placeholder { color: #555; }
     justify-content: space-between;
     align-items: center;
     margin-bottom: 8px;
+}
+
+.chat-header h3 {
+    margin: 0;
+}
+
+.chat-header .help-btn {
+    margin-top: 0;
 }
 
 .chat-messages {
