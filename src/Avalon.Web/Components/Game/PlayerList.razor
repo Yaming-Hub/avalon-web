@@ -9,12 +9,31 @@
                 {
                     <span class="player-host" title="Host">👑</span>
                 }
+                @if (player.IsBot)
+                {
+                    <span title="Bot">🤖</span>
+                }
                 @if (State.CurrentLeader == player.Id)
                 {
                     <span class="player-leader" title="Leader">🎯</span>
                 }
                 <span class="player-name">@player.Name</span>
+                @if (State.VisiblePlayerIds is not null && State.VisiblePlayerIds.Contains(player.Id))
+                {
+                    <span class="player-tag-evil">@GetVisibleTag()</span>
+                }
             </li>
+        }
+        @if (State.ObserverPlayers is { Count: > 0 })
+        {
+            @foreach (var observer in State.ObserverPlayers)
+            {
+                <li>
+                    <span class="player-dot dot-unknown"></span>
+                    <span class="player-name">@observer.Name</span>
+                    <span class="player-tag-observer">[observer]</span>
+                </li>
+            }
         }
     </ul>
 }
@@ -22,18 +41,27 @@
 @code {
     [Parameter] public GameStateResponse? State { get; set; }
 
+    private string GetVisibleTag()
+    {
+        return State?.YourRole switch
+        {
+            "Merlin" => "(evil)",
+            "Assassin" or "Morgana" or "Mordred" => "(evil)",
+            "Percival" => "(Merlin/Morgana)",
+            _ => ""
+        };
+    }
+
     private string GetDotClass(PlayerView player)
     {
         if (State is null) return "dot-unknown";
 
-        // Show team colour if game is over or player is in visible list
         var isVisible = State.Phase == "GameOver"
             || (State.VisiblePlayerIds is not null && State.VisiblePlayerIds.Contains(player.Id))
             || player.Id == State.YourPlayerId;
 
         if (!isVisible) return "dot-unknown";
 
-        // During GameOver the server exposes Role/Team on PlayerView
         var team = player.Team;
         if (team is null && player.Id == State.YourPlayerId)
             team = State.YourTeam;

@@ -7,18 +7,6 @@
             <span class="team-badge @(State.YourTeam == "Good" ? "team-good" : "team-evil")">
                 @State.YourTeam
             </span>
-
-            @if (State.VisiblePlayerIds is { Count: > 0 })
-            {
-                <p class="visible-players">
-                    @GetVisibilityLabel(State.YourRole)
-                    @foreach (var id in State.VisiblePlayerIds)
-                    {
-                        var name = State.Players.FirstOrDefault(p => p.Id == id)?.Name ?? id;
-                        <span class="visible-player-tag @GetVisibleTagClass(State.YourRole)">@name @GetVisibleTag(State.YourRole)</span>
-                    }
-                </p>
-            }
         </div>
     </div>
 }
@@ -53,29 +41,5 @@ else
     {
         "LoyalServant" => "Loyal Servant",
         _ => role
-    };
-
-    private static string GetVisibilityLabel(string? role) => role switch
-    {
-        "Merlin" => "Known evil: ",
-        "Percival" => "Merlin or Morgana: ",
-        "Assassin" or "Morgana" or "Mordred" => "Fellow evil: ",
-        _ => "You can see: "
-    };
-
-    private static string GetVisibleTag(string? role) => role switch
-    {
-        "Merlin" => "(evil)",
-        "Percival" => "(Merlin/Morgana)",
-        "Assassin" or "Morgana" or "Mordred" => "(evil)",
-        _ => ""
-    };
-
-    private static string GetVisibleTagClass(string? role) => role switch
-    {
-        "Merlin" => "tag-evil",
-        "Percival" => "tag-unknown",
-        "Assassin" or "Morgana" or "Mordred" => "tag-evil",
-        _ => ""
     };
 }
