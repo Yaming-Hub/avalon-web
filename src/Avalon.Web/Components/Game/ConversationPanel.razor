@@ -16,7 +16,7 @@
         }
     </div>
     <div class="chat-input-row">
-        <input type="text" class="chat-input" placeholder="Type a message..." @bind="_inputMessage" @onkeydown="HandleKeyDown" />
+        <input type="text" class="chat-input" placeholder="Type a message..." @bind="_inputMessage" @bind:event="oninput" @onkeydown="HandleKeyDown" />
         <button class="btn btn-primary btn-sm" @onclick="SendMessage" disabled="@string.IsNullOrWhiteSpace(_inputMessage)">Send</button>
     </div>
 </div>
