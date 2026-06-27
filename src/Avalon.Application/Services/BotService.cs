@@ -86,8 +86,9 @@ public class BotService
 
         if (leader.Team == Team.Good)
         {
-            // Good bot leader: include self + least suspicious others
-            var suspicion = _intelligence.CalculateSuspicionScores(game, leader);
+            // Good bot leader: include self + least suspicious others.
+            // Proposals may use Merlin's secret knowledge (low detectability).
+            var suspicion = _intelligence.CalculateSuspicionScores(game, leader, useSecretKnowledge: true);
             var others = game.Players
                 .Where(p => p.Id != leader.Id)
                 .OrderBy(p => suspicion.GetValueOrDefault(p.Id, 0.0))
@@ -185,8 +186,10 @@ public class BotService
             }
             else
             {
-                // Good bot: use suspicion + personality
-                var suspicion = _intelligence.CalculateSuspicionScores(game, player);
+                // Good bot: vote on observable suspicion only.
+                // Merlin deliberately does NOT use secret knowledge when voting,
+                // to avoid revealing herself to the assassin.
+                var suspicion = _intelligence.CalculateSuspicionScores(game, player, useSecretKnowledge: false);
                 double teamSuspicion = proposal.ProposedPlayerIds
                     .Sum(id => suspicion.GetValueOrDefault(id, 0.0));
                 double avgSuspicion = teamSuspicion / proposal.ProposedPlayerIds.Count;
