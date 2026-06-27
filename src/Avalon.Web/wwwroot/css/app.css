@@ -58,7 +58,7 @@ body {
     color: var(--blue);
 }
 
-main { flex: 1; min-height: 0; overflow: auto; }
+main { flex: 1; min-height: 0; position: relative; overflow: auto; }
 
 /* Layout helpers */
 .page-center {
@@ -74,7 +74,8 @@ main { flex: 1; min-height: 0; overflow: auto; }
 }
 
 .game-root {
-    height: 100%;
+    position: absolute;
+    inset: 0;
     display: flex;
     overflow: hidden;
 }
