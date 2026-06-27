@@ -47,6 +47,7 @@ public class BotIntelligence
     {
         var scores = new Dictionary<string, double>();
         var goodPlayers = game.Players.Where(p => p.Team == Team.Good).ToList();
+        var evilPlayers = game.Players.Where(p => p.Team == Team.Evil).ToList();
 
         foreach (var player in goodPlayers)
             scores[player.Id] = 0.0;
@@ -86,8 +87,36 @@ public class BotIntelligence
                         // Rejecting clean teams → less likely Merlin (random or confused)
                         scores[player.Id] -= 0.3;
                     }
+
+                    // Second-order: does this player consistently reject teams with specific evil players?
+                    // Merlin would reject any team with ANY evil player (not just one specific one)
+                    foreach (var evil in evilPlayers)
+                    {
+                        if (!proposal.ProposedPlayerIds.Contains(evil.Id)) continue;
+                        if (vote == VoteType.Reject)
+                            scores[player.Id] += 0.3; // rejects teams with this evil → Merlin-like
+                        else
+                            scores[player.Id] -= 0.2; // approves team with evil → less Merlin-like
+                    }
                 }
             }
+        }
+
+        // Consistency bonus: Merlin should reject ALL evil, not just some
+        // Check if player's rejection pattern is broad (targets multiple evil)
+        foreach (var player in goodPlayers)
+        {
+            int evilPlayersTargeted = 0;
+            foreach (var evil in evilPlayers)
+            {
+                bool rejectedTeamWithThisEvil = game.Rounds.SelectMany(r => r.Proposals)
+                    .Any(p => p.ProposedPlayerIds.Contains(evil.Id)
+                        && p.Votes.TryGetValue(player.Id, out var v) && v == VoteType.Reject);
+                if (rejectedTeamWithThisEvil) evilPlayersTargeted++;
+            }
+            // Targeting multiple evil players → strong Merlin signal
+            if (evilPlayersTargeted >= 2)
+                scores[player.Id] += evilPlayersTargeted * 0.8;
         }
 
         // Factor in cross-game memory
@@ -179,7 +208,6 @@ public class BotIntelligence
                 if (!scores.ContainsKey(pid)) continue;
 
                 // Each fail makes quest participants more suspicious
-                // But spread suspicion based on how many were on the quest
                 scores[pid] += (double)failCount / round.Quest.ParticipantIds.Count * 3.0;
             }
         }
@@ -188,14 +216,6 @@ public class BotIntelligence
         foreach (var proposal in round.Proposals)
         {
             if (!proposal.IsApproved.HasValue) continue;
-
-            int evilInTeam = 0;
-            if (bot.Team == Team.Evil)
-            {
-                // Evil bot knows who's evil
-                evilInTeam = proposal.ProposedPlayerIds
-                    .Count(id => game.Players.First(p => p.Id == id).Team == Team.Evil);
-            }
 
             foreach (var (voterId, vote) in proposal.Votes)
             {
@@ -209,6 +229,99 @@ public class BotIntelligence
                     // Players who reject everything are slightly less suspicious
                     if (vote == VoteType.Reject)
                         scores[voterId] -= 0.2;
+                }
+            }
+
+            // === Second-order reasoning ===
+            // Analyze WHO each player rejects/approves to infer their knowledge
+
+            if (bot.Team == Team.Good)
+            {
+                // "If Player X rejected a team, and that team later failed,
+                //  then X might have good info → players X rejects are more suspicious"
+                if (round.IsSuccess == false)
+                {
+                    // Find players who rejected the approved proposal that led to the failed quest
+                    var approvedProposal = round.Proposals.FirstOrDefault(p => p.IsApproved == true);
+                    if (approvedProposal != null)
+                    {
+                        var smartRejecters = approvedProposal.Votes
+                            .Where(kv => kv.Value == VoteType.Reject && kv.Key != bot.Id)
+                            .Select(kv => kv.Key)
+                            .ToList();
+
+                        // These rejecters had good instincts — trust their other rejections
+                        foreach (var rejecterId in smartRejecters)
+                        {
+                            // Look at other proposals this player rejected
+                            foreach (var otherProposal in round.Proposals)
+                            {
+                                if (otherProposal == approvedProposal) continue;
+                                if (!otherProposal.Votes.TryGetValue(rejecterId, out var otherVote)) continue;
+                                if (otherVote != VoteType.Reject) continue;
+
+                                // Players on teams that smart-rejecters also rejected are suspicious
+                                foreach (var suspectId in otherProposal.ProposedPlayerIds)
+                                {
+                                    if (suspectId == bot.Id || !scores.ContainsKey(suspectId)) continue;
+                                    scores[suspectId] += 0.3;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // "If Player X consistently rejects teams with Player Y,
+                //  and quests without Y succeed, Y is more suspicious"
+                foreach (var targetPlayer in game.Players)
+                {
+                    if (targetPlayer.Id == bot.Id || !scores.ContainsKey(targetPlayer.Id)) continue;
+
+                    int rejectionsWithTarget = 0;
+                    int proposalsWithTarget = 0;
+
+                    foreach (var r in game.Rounds)
+                    {
+                        foreach (var p in r.Proposals)
+                        {
+                            if (!p.ProposedPlayerIds.Contains(targetPlayer.Id)) continue;
+                            if (!p.IsApproved.HasValue) continue;
+                            proposalsWithTarget++;
+
+                            // Count how many OTHER players rejected teams with this target
+                            int othersRejecting = p.Votes
+                                .Count(kv => kv.Key != bot.Id && kv.Key != targetPlayer.Id
+                                    && kv.Value == VoteType.Reject);
+                            if (othersRejecting > game.Players.Count / 3)
+                                rejectionsWithTarget++;
+                        }
+                    }
+
+                    // If many players frequently reject teams with target → suspicious
+                    if (proposalsWithTarget >= 2 && rejectionsWithTarget > proposalsWithTarget / 2)
+                        scores[targetPlayer.Id] += 0.8;
+                }
+            }
+            else
+            {
+                // Evil bot second-order reasoning:
+                // "If Player X rejects teams containing ME (evil), X might know I'm evil"
+                // This is used in Merlin scoring, but also raises suspicion that X is Merlin
+                foreach (var (voterId, vote) in proposal.Votes)
+                {
+                    if (voterId == bot.Id || !scores.ContainsKey(voterId)) continue;
+
+                    if (vote == VoteType.Reject && proposal.ProposedPlayerIds.Contains(bot.Id))
+                    {
+                        // This player rejected a team with me → they might suspect me
+                        // From evil perspective, this player might be Merlin or just smart
+                        scores[voterId] += 0.4;
+                    }
+                    if (vote == VoteType.Approve && proposal.ProposedPlayerIds.Contains(bot.Id))
+                    {
+                        // Approved a team with me → less likely to be Merlin
+                        scores[voterId] -= 0.3;
+                    }
                 }
             }
         }
