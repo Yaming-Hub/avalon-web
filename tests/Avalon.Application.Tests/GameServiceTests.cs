@@ -24,7 +24,7 @@ public class GameServiceTests
         _mapper = new GameStateMapper();
         var activityLog = new InMemoryActivityLog();
         var chatService = new InMemoryConversationService();
-        var botService = new BotService(_repository, _notifierMock.Object, activityLog);
+        var botService = new BotService(_repository, _notifierMock.Object, activityLog, chatService);
         _service = new GameService(_repository, _notifierMock.Object, _mapper, botService, activityLog, chatService);
     }
 

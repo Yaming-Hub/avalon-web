@@ -18,13 +18,15 @@ public class BotService
     private readonly IGameRepository _repository;
     private readonly IGameNotifier _notifier;
     private readonly IActivityLog _log;
+    private readonly IConversationService _chat;
     private readonly Random _random = new();
 
-    public BotService(IGameRepository repository, IGameNotifier notifier, IActivityLog log)
+    public BotService(IGameRepository repository, IGameNotifier notifier, IActivityLog log, IConversationService chat)
     {
         _repository = repository;
         _notifier = notifier;
         _log = log;
+        _chat = chat;
     }
 
     /// <summary>
@@ -99,6 +101,20 @@ public class BotService
             anyVoted = true;
         }
 
+        // If proposal resolved after bot votes, post the result
+        if (anyVoted && proposal.IsApproved.HasValue)
+        {
+            var approvers = proposal.Votes.Where(kv => kv.Value == VoteType.Approve)
+                .Select(kv => game.Players.First(p => p.Id == kv.Key).Name).ToList();
+            var rejecters = proposal.Votes.Where(kv => kv.Value == VoteType.Reject)
+                .Select(kv => game.Players.First(p => p.Id == kv.Key).Name).ToList();
+            var resultText = proposal.IsApproved.Value ? "✅ Team APPROVED" : "❌ Team REJECTED";
+            var voteDetail = "";
+            if (approvers.Count > 0) voteDetail += $"Approve: {string.Join(", ", approvers)}";
+            if (rejecters.Count > 0) voteDetail += (voteDetail.Length > 0 ? " | " : "") + $"Reject: {string.Join(", ", rejecters)}";
+            _chat.PostMessage(game.Id, "System", $"{resultText} ({approvers.Count}👍 {rejecters.Count}👎). {voteDetail}", isSystem: true);
+        }
+
         return anyVoted;
     }
 
@@ -118,6 +134,19 @@ public class BotService
             anyVoted = true;
         }
 
+        // If quest resolved after bot votes, post the result
+        if (anyVoted && quest.IsSuccess.HasValue)
+        {
+            var questResult = quest.IsSuccess.Value
+                ? $"✅ Quest PASSED ({quest.SuccessCount} success, {quest.FailCount} fail)"
+                : $"❌ Quest FAILED ({quest.SuccessCount} success, {quest.FailCount} fail)";
+            _chat.PostMessage(game.Id, "System", questResult, isSystem: true);
+
+            var goodWins = game.Rounds.Count(r => r.IsSuccess == true);
+            var evilWins = game.Rounds.Count(r => r.IsSuccess == false);
+            _chat.PostMessage(game.Id, "System", $"Score: Good {goodWins} — Evil {evilWins}", isSystem: true);
+        }
+
         return anyVoted;
     }
 
@@ -128,6 +157,23 @@ public class BotService
             return false;
 
         game.ProceedFromQuestResult();
+
+        // Post chat messages for the transition
+        if (game.Phase == GamePhase.TeamProposal)
+            _chat.PostMessage(game.Id, "System", $"📋 Round {game.CurrentRound?.RoundNumber} begins. {game.CurrentLeader?.Name} is the leader. Team size: {game.CurrentRound?.RequiredTeamSize}", isSystem: true);
+        else if (game.Phase == GamePhase.AssassinVote)
+            _chat.PostMessage(game.Id, "System", "⚔️ Good has won 3 quests! But the Assassin now has a chance to identify Merlin...", isSystem: true);
+        else if (game.Phase == GamePhase.GameOver)
+        {
+            var resultMsg = game.Result switch
+            {
+                GameResult.GoodWins => "🎉 GOOD TEAM WINS! The forces of good have triumphed!",
+                GameResult.EvilWins => "💀 EVIL TEAM WINS! The forces of darkness prevail!",
+                _ => "Game over!"
+            };
+            _chat.PostMessage(game.Id, "System", resultMsg, isSystem: true);
+        }
+
         return true;
     }
 
