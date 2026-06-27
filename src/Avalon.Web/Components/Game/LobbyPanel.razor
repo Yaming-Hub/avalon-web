@@ -4,54 +4,63 @@
     <h2>Lobby</h2>
     <p>Players: @State.Players.Count/10 (need at least 5)</p>
 
-    <ul>
-        @foreach (var player in State.Players)
-        {
-            <li>@player.Name @(player.IsHost ? "👑" : "") @(player.IsBot ? "🤖" : "")</li>
-        }
-    </ul>
-
     @if (IsHost)
     {
-        <div class="btn-row" style="margin-bottom: 12px;">
-            <button class="btn btn-primary" @onclick="AddBots" disabled="@(State.Players.Count >= 10)">
-                🤖 Add Bots (@Math.Min(4, 10 - State.Players.Count))
-            </button>
-            <button class="btn btn-primary" @onclick="AddOneBot" disabled="@(State.Players.Count >= 10)">
-                🤖 +1 Bot
-            </button>
+        <div class="lobby-grid">
+            <!-- Left column: players / bots -->
+            <div class="lobby-col">
+                <h3>Players</h3>
+                <ul class="lobby-player-list">
+                    @foreach (var player in State.Players)
+                    {
+                        <li>@player.Name @(player.IsHost ? "👑" : "") @(player.IsBot ? "🤖" : "")</li>
+                    }
+                </ul>
+
+                <div class="btn-row">
+                    <button class="btn btn-primary btn-sm" @onclick="AddBots" disabled="@(State.Players.Count >= 10)">
+                        🤖 Add Bots (@Math.Min(4, 10 - State.Players.Count))
+                    </button>
+                    <button class="btn btn-primary btn-sm" @onclick="AddOneBot" disabled="@(State.Players.Count >= 10)">
+                        🤖 +1 Bot
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right column: game settings -->
+            <div class="lobby-col">
+                <h3>Game Settings</h3>
+                <div class="checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" checked disabled /> Merlin
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" checked disabled /> Assassin
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" @bind="_percivalEnabled" /> Percival
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" @bind="_morganaEnabled" /> Morgana
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" @bind="_mordredEnabled" /> Mordred
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" @bind="_oberonEnabled" /> Oberon
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" @bind="_ladyOfTheLakeEnabled" /> Lady of the Lake
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" @bind="_activityLogEnabled" /> 📋 Activity Log (debug)
+                    </label>
+                </div>
+                <button class="btn btn-primary btn-sm" @onclick="SaveSettings">Save Settings</button>
+            </div>
         </div>
 
-        <h3>Game Settings</h3>
-        <div class="checkbox-group">
-            <label class="checkbox-label">
-                <input type="checkbox" checked disabled /> Merlin
-            </label>
-            <label class="checkbox-label">
-                <input type="checkbox" checked disabled /> Assassin
-            </label>
-            <label class="checkbox-label">
-                <input type="checkbox" @bind="_percivalEnabled" /> Percival
-            </label>
-            <label class="checkbox-label">
-                <input type="checkbox" @bind="_morganaEnabled" /> Morgana
-            </label>
-            <label class="checkbox-label">
-                <input type="checkbox" @bind="_mordredEnabled" /> Mordred
-            </label>
-            <label class="checkbox-label">
-                <input type="checkbox" @bind="_oberonEnabled" /> Oberon
-            </label>
-            <label class="checkbox-label">
-                <input type="checkbox" @bind="_ladyOfTheLakeEnabled" /> Lady of the Lake
-            </label>
-            <label class="checkbox-label">
-                <input type="checkbox" @bind="_activityLogEnabled" /> 📋 Activity Log (debug — players will be notified)
-            </label>
-        </div>
-
-        <div class="btn-row">
-            <button class="btn btn-primary" @onclick="SaveSettings">Save Settings</button>
+        <div class="btn-row" style="margin-top:16px;">
             <button class="btn btn-success btn-lg" @onclick="StartGame" disabled="@(State.Players.Count < 5)">
                 Start Game
             </button>
@@ -64,6 +73,13 @@
     }
     else
     {
+        <h3>Players</h3>
+        <ul class="lobby-player-list">
+            @foreach (var player in State.Players)
+            {
+                <li>@player.Name @(player.IsHost ? "👑" : "") @(player.IsBot ? "🤖" : "")</li>
+            }
+        </ul>
         <div class="waiting">
             <div class="spinner"></div>
             <p>Waiting for host to start...</p>
