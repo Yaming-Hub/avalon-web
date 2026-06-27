@@ -13,6 +13,14 @@ public class GameSettings
     public bool LadyOfTheLakeEnabled { get; set; }
     public bool ActivityLogEnabled { get; set; }
 
+    /// <summary>
+    /// Probability (0.0–1.0) that each bot player is steered toward an Evil
+    /// minion role during role assignment. 0 = unbiased (fully random).
+    /// Bots are never assigned Merlin while this is &gt; 0, removing the
+    /// worst case for mixed human/bot games (a mute bot crippling Merlin).
+    /// </summary>
+    public double BotEvilBias { get; set; } = 0.0;
+
     public List<Role> GetEnabledSpecialRoles()
     {
         var roles = new List<Role>();

@@ -54,6 +54,7 @@ public class GameSettingsView
     public bool OberonEnabled { get; set; }
     public bool LadyOfTheLakeEnabled { get; set; }
     public bool ActivityLogEnabled { get; set; }
+    public double BotEvilBias { get; set; }
 }
 
 public class RoundView
