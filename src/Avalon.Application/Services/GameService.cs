@@ -312,6 +312,7 @@ public class GameService
     {
         var game = await GetGameOrThrow(gameId);
         var player = game.Players.FirstOrDefault(p => p.Id == playerId)
+            ?? game.Observers.FirstOrDefault(p => p.Id == playerId)
             ?? throw new InvalidOperationException("Player not found in game.");
         _chat.PostMessage(gameId, player.Name, message);
     }
